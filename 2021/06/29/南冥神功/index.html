@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="程序分析ida伪代码（修改后）： 123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596">
+<meta property="og:type" content="article">
+<meta property="og:title" content="南冥神功">
+<meta property="og:url" content="http://example.com/2021/06/29/%E5%8D%97%E5%86%A5%E7%A5%9E%E5%8A%9F/index.html">
+<meta property="og:site_name" content="Y">
+<meta property="og:description" content="程序分析ida伪代码（修改后）： 123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="d:/Desktop/CTF/TK/JJT/RE/南冥神功/pzcrackme/hexmap.png">
+<meta property="og:image" content="d:/Desktop/CTF/TK/JJT/RE/南冥神功/pzcrackme/map.png">
+<meta property="og:image" content="d:/Desktop/CTF/TK/JJT/RE/南冥神功/pzcrackme/dir.jpg">
+<meta property="og:image" content="d:/Desktop/CTF/TK/JJT/RE/南冥神功/pzcrackme/mystery.jpg">
+<meta property="og:image" content="d:/Desktop/CTF/TK/JJT/RE/南冥神功/pzcrackme/res1.png">
+<meta property="og:image" content="d:/Desktop/CTF/TK/JJT/RE/南冥神功/pzcrackme/res2.png">
+<meta property="article:published_time" content="2021-06-29T11:25:28.000Z">
+<meta property="article:modified_time" content="2021-06-29T11:29:30.877Z">
+<meta property="article:author" content="yang">
+<meta property="article:tag" content="reverse">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="d:/Desktop/CTF/TK/JJT/RE/南冥神功/pzcrackme/hexmap.png">
+
+<link rel="canonical" href="http://example.com/2021/06/29/%E5%8D%97%E5%86%A5%E7%A5%9E%E5%8A%9F/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>南冥神功 | Y</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Y</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">dont know write what</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2021/06/29/%E5%8D%97%E5%86%A5%E7%A5%9E%E5%8A%9F/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yang">
+      <meta itemprop="description" content="it is funny">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Y">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          南冥神功
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-06-29 19:25:28 / 修改时间：19:29:30" itemprop="dateCreated datePublished" datetime="2021-06-29T19:25:28+08:00">2021-06-29</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%8D%B7%E5%8D%B7%E9%A2%98/" itemprop="url" rel="index"><span itemprop="name">卷卷题</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%8D%B7%E5%8D%B7%E9%A2%98/reverse/" itemprop="url" rel="index"><span itemprop="name">reverse</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="程序分析"><a href="#程序分析" class="headerlink" title="程序分析"></a>程序分析</h1><p>ida伪代码（修改后）：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> __cdecl <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span> **argv, <span class="keyword">const</span> <span class="keyword">char</span> **envp)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">char</span> inch; <span class="comment">// al</span></span><br><span class="line">  <span class="keyword">int</span> inindex; <span class="comment">// esi</span></span><br><span class="line">  <span class="keyword">int</span> hexindex; <span class="comment">// ecx</span></span><br><span class="line">  <span class="keyword">int</span> step2; <span class="comment">// edx</span></span><br><span class="line">  <span class="keyword">int</span> v8; <span class="comment">// eax</span></span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> nX; <span class="comment">// ecx</span></span><br><span class="line">  <span class="keyword">int</span> step1; <span class="comment">// eax</span></span><br><span class="line">  <span class="keyword">int</span> i; <span class="comment">// edx</span></span><br><span class="line">  <span class="keyword">int</span> v12; <span class="comment">// eax</span></span><br><span class="line">  <span class="keyword">int</span> v13; <span class="comment">// eax</span></span><br><span class="line">  <span class="keyword">char</span> (*pNow)[<span class="number">10</span>]; <span class="comment">// eax</span></span><br><span class="line">  <span class="keyword">int</span> flag0; <span class="comment">// edx</span></span><br><span class="line">  <span class="keyword">char</span> (*pNext)[<span class="number">10</span>]; <span class="comment">// ecx</span></span><br><span class="line">  <span class="keyword">int</span> v17; <span class="comment">// eax</span></span><br><span class="line">  <span class="keyword">int</span> v18; <span class="comment">// eax</span></span><br><span class="line">  <span class="keyword">int</span> v19; <span class="comment">// eax</span></span><br><span class="line">  <span class="keyword">int</span> s1tos2; <span class="comment">// [esp+1Ch] [ebp-60h]</span></span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> nY; <span class="comment">// [esp+20h] [ebp-5Ch]</span></span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> v22; <span class="comment">// [esp+24h] [ebp-58h]</span></span><br><span class="line">  <span class="keyword">char</span> hexch; <span class="comment">// [esp+2Bh] [ebp-51h]</span></span><br><span class="line">  <span class="keyword">int</span> hexlen; <span class="comment">// [esp+2Ch] [ebp-50h]</span></span><br><span class="line">  <span class="keyword">char</span> input[<span class="number">76</span>]; <span class="comment">// [esp+30h] [ebp-4Ch] BYREF</span></span><br><span class="line"></span><br><span class="line">  sub_40AD70();</span><br><span class="line">  printf_((<span class="keyword">int</span>)&amp;dword_4B8860, <span class="string">&quot;Input your code: &quot;</span>);</span><br><span class="line">  scanf_((<span class="keyword">int</span>)&amp;dword_4B8680, input); <span class="comment">//读取输入</span></span><br><span class="line">  <span class="keyword">if</span> ( <span class="built_in">strlen</span>(input) &lt;= <span class="number">48</span> )</span><br><span class="line">  &#123;</span><br><span class="line">    inch = input[<span class="number">0</span>];</span><br><span class="line">    <span class="keyword">if</span> ( input[<span class="number">0</span>] )</span><br><span class="line">    &#123;</span><br><span class="line">      inindex = <span class="number">0</span>;</span><br><span class="line">      nY = <span class="number">0</span>;</span><br><span class="line">      v22 = <span class="number">0</span>;</span><br><span class="line">      hexlen = dword_4B7020;</span><br><span class="line">      hexch = HexMap[<span class="number">0</span>];</span><br><span class="line">LABEL_4:</span><br><span class="line">      <span class="keyword">if</span> ( hexlen &gt; <span class="number">0</span> )</span><br><span class="line">      &#123;</span><br><span class="line">        hexindex = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">if</span> ( hexch == inch )                    <span class="comment">// Jump to find the index of inch in HexMap</span></span><br><span class="line">        &#123;</span><br><span class="line">LABEL_11:</span><br><span class="line">          step2 = (inindex + hexindex / <span class="number">6</span>) % <span class="number">6</span>;</span><br><span class="line">          v8 = hexindex + inindex;</span><br><span class="line">          nX = v22;</span><br><span class="line">          s1tos2 = step2;</span><br><span class="line">          step1 = <span class="number">5</span> - v8 % <span class="number">6</span>;</span><br><span class="line">          <span class="keyword">for</span> ( i = <span class="number">0</span>; ; i = <span class="number">1</span> )</span><br><span class="line">          &#123;</span><br><span class="line">            <span class="keyword">switch</span> ( step1 )</span><br><span class="line">            &#123;</span><br><span class="line">              <span class="keyword">case</span> <span class="number">1</span>:</span><br><span class="line">                ++nX;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">              <span class="keyword">case</span> <span class="number">2</span>:</span><br><span class="line">                v17 = (nY++ &amp; <span class="number">1</span>) == <span class="number">0</span>;</span><br><span class="line">                nX += v17;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">              <span class="keyword">case</span> <span class="number">3</span>:</span><br><span class="line">                v12 = (nY++ &amp; <span class="number">1</span>) != <span class="number">0</span>;</span><br><span class="line">                nX -= v12;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">              <span class="keyword">case</span> <span class="number">4</span>:</span><br><span class="line">                --nX;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">              <span class="keyword">case</span> <span class="number">5</span>:</span><br><span class="line">                v19 = (nY-- &amp; <span class="number">1</span>) != <span class="number">0</span>;</span><br><span class="line">                nX -= v19;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">              <span class="keyword">default</span>:</span><br><span class="line">                v18 = (nY-- &amp; <span class="number">1</span>) == <span class="number">0</span>;</span><br><span class="line">                nX += v18;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> ( nX &gt; <span class="number">9</span> )</span><br><span class="line">              <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">if</span> ( nY &gt; <span class="number">8</span> )</span><br><span class="line">              <span class="keyword">break</span>;</span><br><span class="line">            v13 = (<span class="keyword">int</span>)&amp;Map[nY][nX];</span><br><span class="line">            <span class="keyword">if</span> ( *(_BYTE *)v13 )</span><br><span class="line">              <span class="keyword">break</span>;</span><br><span class="line">            *(_BYTE *)v13 = <span class="number">1</span>;</span><br><span class="line">            <span class="keyword">if</span> ( i == <span class="number">1</span> )</span><br><span class="line">            &#123;</span><br><span class="line">              ++inindex;</span><br><span class="line">              v22 = nX;</span><br><span class="line">              inch = input[inindex];</span><br><span class="line">              <span class="keyword">if</span> ( inch )</span><br><span class="line">                <span class="keyword">goto</span> LABEL_4;</span><br><span class="line">              <span class="keyword">goto</span> LABEL_19;</span><br><span class="line">            &#125;</span><br><span class="line">            step1 = s1tos2;</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">          <span class="keyword">while</span> ( hexlen != ++hexindex )</span><br><span class="line">          &#123;</span><br><span class="line">            <span class="keyword">if</span> ( HexMap[hexindex] == inch )</span><br><span class="line">              <span class="keyword">goto</span> LABEL_11;</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">LABEL_19:</span><br><span class="line">      pNow = Map;</span><br><span class="line">      flag0 = <span class="number">0</span>;</span><br><span class="line">      <span class="keyword">do</span></span><br><span class="line">      &#123;</span><br><span class="line">        pNext = pNow + <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">do</span></span><br><span class="line">        &#123;</span><br><span class="line">          flag0 += *(_BYTE *)pNow == <span class="number">0</span>;</span><br><span class="line">          pNow = (<span class="keyword">char</span> (*)[<span class="number">10</span>])((<span class="keyword">char</span> *)pNow + <span class="number">1</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">while</span> ( pNext != pNow );</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">while</span> ( &amp;unk_4B70DA != (_UNKNOWN *)pNext );</span><br><span class="line">      <span class="keyword">if</span> ( !flag0 )</span><br><span class="line">      &#123;</span><br><span class="line">        sub_4ABF30(&amp;dword_4B8860, (<span class="keyword">int</span>)<span class="string">&quot;Good job!&quot;</span>, <span class="number">9</span>);</span><br><span class="line">        sub_4AD980(&amp;dword_4B8860);</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  sub_4ABF30(&amp;dword_4B8860, (<span class="keyword">int</span>)<span class="string">&quot;Try again...&quot;</span>, <span class="number">12</span>);</span><br><span class="line">  sub_4AD980(&amp;dword_4B8860);</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br></pre></td></tr></table></figure>
+
+<p>HexMap为字符数组</p>
+<p><img src="D:\Desktop\CTF\TK\JJT\RE\南冥神功\pzcrackme\hexmap.png"></p>
+<p>Map为二维数组</p>
+<p><img src="D:\Desktop\CTF\TK\JJT\RE\南冥神功\pzcrackme\map.png"></p>
+<p>具体内容为：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">char</span> Map[][<span class="number">10</span>] = &#123;</span><br><span class="line">     &#123; <span class="string">&#x27;S&#x27;</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">0</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> &#125;,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>伪代码转换成c代码为（网上找的，稍作修改，地址：<a target="_blank" rel="noopener" href="http://www.yxfzedu.com)/">www.yxfzedu.com）</a></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="keyword">char</span> g_szHex[] = <span class="string">&quot;012345&quot;</span></span><br><span class="line">                  <span class="string">&quot;6789AB&quot;</span></span><br><span class="line">                  <span class="string">&quot;CDEFGH&quot;</span></span><br><span class="line">                  <span class="string">&quot;IJKLMN&quot;</span></span><br><span class="line">                  <span class="string">&quot;OPQRST&quot;</span></span><br><span class="line">                  <span class="string">&quot;UVWXYZ&quot;</span> ;</span><br><span class="line"><span class="keyword">int</span> g_nHexTableSize = <span class="number">0x24</span> ; <span class="comment">// sizeof(g_szHex)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ROW 10</span></span><br><span class="line"><span class="keyword">char</span> g_szMaze[][<span class="number">10</span>] = &#123;</span><br><span class="line">     &#123; <span class="string">&#x27;S&#x27;</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">1</span> &#125;,</span><br><span class="line">     &#123;  <span class="number">0</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> , <span class="number">1</span> , <span class="number">1</span> , <span class="number">0</span> , <span class="number">0</span> &#125;,</span><br><span class="line">&#125;;</span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">( <span class="keyword">int</span> argc, <span class="keyword">const</span> <span class="keyword">char</span> * * argv, <span class="keyword">const</span> <span class="keyword">char</span> * * envp)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">     <span class="keyword">char</span> ch;</span><br><span class="line">     <span class="keyword">int</span> nInputIdx;</span><br><span class="line">     <span class="keyword">int</span> nHexIdx;</span><br><span class="line">     <span class="keyword">unsigned</span> <span class="keyword">int</span> nX;</span><br><span class="line">     <span class="keyword">unsigned</span> <span class="keyword">int</span> nY;</span><br><span class="line">     <span class="keyword">int</span> nStep1;</span><br><span class="line">     <span class="keyword">int</span> nStep2;</span><br><span class="line">     <span class="keyword">int</span> flag;   </span><br><span class="line">     <span class="keyword">int</span> nCount0;</span><br><span class="line">     <span class="keyword">char</span> * pNow;  </span><br><span class="line">     <span class="keyword">char</span> * pNextRow;  </span><br><span class="line">     <span class="keyword">char</span> szInput[ <span class="number">76</span> ] = &#123; <span class="number">0</span> &#125;;</span><br><span class="line"> </span><br><span class="line">     <span class="built_in">printf</span>( <span class="string">&quot;Input your code: &quot;</span> );</span><br><span class="line">     <span class="built_in">scanf</span>( <span class="string">&quot;%48s&quot;</span> , szInput);</span><br><span class="line">     <span class="keyword">if</span> (<span class="built_in">strlen</span>(szInput) &lt;= <span class="number">0x30</span> )</span><br><span class="line">     &#123;</span><br><span class="line">         nX = <span class="number">0</span> ;</span><br><span class="line">         nY = <span class="number">0</span> ;</span><br><span class="line">         nInputIdx = <span class="number">0</span> ;</span><br><span class="line">         ch = szInput[nInputIdx];</span><br><span class="line"> </span><br><span class="line">         <span class="keyword">if</span> (ch != <span class="number">0</span> )</span><br><span class="line">         &#123;</span><br><span class="line">             <span class="keyword">do</span></span><br><span class="line">             &#123;</span><br><span class="line">                 <span class="keyword">if</span> (g_nHexTableSize &gt; <span class="number">0</span> )<span class="comment">// 必过</span></span><br><span class="line">                 &#123;</span><br><span class="line">                     <span class="comment">// get nHexIdx</span></span><br><span class="line">                     nHexIdx = <span class="number">0</span> ; <span class="comment">//自定义索引</span></span><br><span class="line">                     <span class="keyword">do</span> &#123;</span><br><span class="line">                         <span class="keyword">if</span> (g_szHex[nHexIdx] == ch)</span><br><span class="line">                             <span class="keyword">break</span> ;</span><br><span class="line">                     &#125; <span class="keyword">while</span> (g_nHexTableSize != ++ nHexIdx);<span class="comment">//找出ch在table中是第几位</span></span><br><span class="line"> </span><br><span class="line">                     nStep1 = <span class="number">5</span> - (nHexIdx + nInputIdx) % <span class="number">6</span> ;</span><br><span class="line">                     nStep2 = (nInputIdx + nHexIdx / <span class="number">6</span> ) % <span class="number">6</span> ; <span class="comment">//输入转换</span></span><br><span class="line">                     <span class="keyword">switch</span> (nStep1)</span><br><span class="line">                     &#123;</span><br><span class="line">                     <span class="keyword">case</span> <span class="number">1</span> :</span><br><span class="line">                         <span class="comment">// x ++</span></span><br><span class="line">                         ++ nX;</span><br><span class="line">                         <span class="keyword">break</span>;</span><br><span class="line">                     <span class="keyword">case</span> <span class="number">2</span> :</span><br><span class="line">                         <span class="comment">// if y == red  x ++ ,y ++</span></span><br><span class="line">                         flag = (nY++ &amp;<span class="number">1</span> ) == <span class="number">0</span> ; <span class="comment">//y++为偶数行 y为奇数行</span></span><br><span class="line">                         nX += flag;</span><br><span class="line">                         <span class="keyword">break</span> ;</span><br><span class="line">                     <span class="keyword">case</span> <span class="number">3</span> :</span><br><span class="line">                         <span class="comment">// if y == green   x - - ,y ++</span></span><br><span class="line">                         flag = (nY++ &amp;<span class="number">1</span> ) != <span class="number">0</span> ; <span class="comment">//y++为奇数行 y为偶数行</span></span><br><span class="line">                         nX -= flag;</span><br><span class="line">                         <span class="keyword">break</span> ;</span><br><span class="line">                     <span class="keyword">case</span> <span class="number">4</span> :</span><br><span class="line">                         <span class="comment">// x - -</span></span><br><span class="line">                         - - nX;</span><br><span class="line">                         <span class="keyword">break</span> ;</span><br><span class="line">                     <span class="keyword">case</span> <span class="number">5</span> :</span><br><span class="line">                         <span class="comment">// if y == green   x - - ,y - -</span></span><br><span class="line">                         flag = (nY -- &amp; <span class="number">1</span> ) != <span class="number">0</span> ; <span class="comment">//y为偶数行</span></span><br><span class="line">                         nX -= flag;</span><br><span class="line">                         <span class="keyword">break</span> ;</span><br><span class="line">                     <span class="keyword">default</span>:</span><br><span class="line">                         <span class="comment">// if y == red  x ++ ,y - -</span></span><br><span class="line">                         flag = (nY -- &amp; <span class="number">1</span> ) == <span class="number">0</span> ; <span class="comment">//y为奇数行</span></span><br><span class="line">                         nX += flag;</span><br><span class="line">                         <span class="keyword">break</span> ;</span><br><span class="line">                     &#125;</span><br><span class="line">                     <span class="comment">// 检查越界</span></span><br><span class="line">                     <span class="keyword">if</span> (nX &gt; <span class="number">9</span> )</span><br><span class="line">                         <span class="keyword">goto</span> LABEL_F;</span><br><span class="line">                     <span class="keyword">if</span> (nY &gt; <span class="number">8</span> )</span><br><span class="line">                         <span class="keyword">goto</span> LABEL_F;</span><br><span class="line">                     <span class="keyword">if</span> (g_szMaze[nY][nX] == <span class="number">1</span> )</span><br><span class="line">                         <span class="keyword">goto</span> LABEL_F;</span><br><span class="line">                     g_szMaze[nY][nX] = <span class="number">1</span> ;</span><br><span class="line">                     <span class="keyword">switch</span> (nStep2)</span><br><span class="line">                     &#123;</span><br><span class="line">                     <span class="keyword">case</span> <span class="number">1</span> :</span><br><span class="line">                         <span class="comment">// x ++</span></span><br><span class="line">                         ++ nX;</span><br><span class="line">                         <span class="keyword">break</span> ;</span><br><span class="line">                     <span class="keyword">case</span> <span class="number">2</span> :</span><br><span class="line">                         <span class="comment">// if y == red  x ++ ,y ++</span></span><br><span class="line">                         flag = (nY++&amp;<span class="number">1</span> ) == <span class="number">0</span> ;</span><br><span class="line">                         nX += flag;</span><br><span class="line">                         <span class="keyword">break</span> ;</span><br><span class="line">                     <span class="keyword">case</span> <span class="number">3</span> :</span><br><span class="line">                         <span class="comment">// if y == green   x - - ,y ++</span></span><br><span class="line">                         flag = (nY++&amp;<span class="number">1</span> ) != <span class="number">0</span> ;</span><br><span class="line">                         nX -= flag;</span><br><span class="line">                         <span class="keyword">break</span> ;</span><br><span class="line">                     <span class="keyword">case</span> <span class="number">4</span> :</span><br><span class="line">                         <span class="comment">// x - -</span></span><br><span class="line">                         -- nX;</span><br><span class="line">                         <span class="keyword">break</span> ;</span><br><span class="line">                     <span class="keyword">case</span> <span class="number">5</span> :</span><br><span class="line">                         <span class="comment">// if y == green   x - - ,y - -</span></span><br><span class="line">                         flag = (nY --&amp; <span class="number">1</span> ) != <span class="number">0</span> ;</span><br><span class="line">                         nX -= flag;</span><br><span class="line">                         <span class="keyword">break</span> ;</span><br><span class="line">                     <span class="keyword">default</span>:</span><br><span class="line">                         <span class="comment">// if y == red  x ++ ,y - -</span></span><br><span class="line">                         flag = (nY --&amp; <span class="number">1</span> ) == <span class="number">0</span> ;</span><br><span class="line">                         nX += flag;</span><br><span class="line">                         <span class="keyword">break</span> ;</span><br><span class="line">                     &#125;</span><br><span class="line">                     <span class="comment">// 检查越界</span></span><br><span class="line">                     <span class="keyword">if</span> (nX &gt; <span class="number">9</span> )</span><br><span class="line">                         <span class="keyword">goto</span> LABEL_F;<span class="comment">//失败</span></span><br><span class="line">                     <span class="keyword">if</span> (nY &gt; <span class="number">8</span> )</span><br><span class="line">                         <span class="keyword">goto</span> LABEL_F;</span><br><span class="line">                     <span class="keyword">if</span> (g_szMaze[nY][nX] == <span class="number">1</span> )</span><br><span class="line">                     &#123;</span><br><span class="line">                         <span class="keyword">goto</span> LABEL_F;                         </span><br><span class="line">                     &#125;</span><br><span class="line">                     g_szMaze[nY][nX] = <span class="number">1</span> ;</span><br><span class="line">                 &#125;</span><br><span class="line">             &#125; <span class="keyword">while</span> ( <span class="number">0</span> != (ch = szInput[ ++ nInputIdx]));<span class="comment">//逐个遍历输入的字符，直到读到0</span></span><br><span class="line">         &#125;</span><br><span class="line"> </span><br><span class="line">         <span class="comment">// 检查迷宫, 迷宫全部为 1 则验证通过</span></span><br><span class="line">         pNow = (<span class="keyword">char</span> * )g_szMaze;</span><br><span class="line">         nCount0 = <span class="number">0</span> ;</span><br><span class="line">        <span class="keyword">do</span>&#123;</span><br><span class="line">            pNextRow=pNow+<span class="number">1</span>;</span><br><span class="line">            <span class="keyword">do</span>&#123;</span><br><span class="line">                nCount0+= pNow==<span class="number">0</span>;</span><br><span class="line">                pNow=pNow+<span class="number">1</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">while</span>(pNextRow!=pNow);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">while</span>(&amp;g_szMaze[ <span class="number">0</span> ][ <span class="number">0</span> ] + <span class="keyword">sizeof</span>(g_szMaze) != (<span class="keyword">char</span> * )pNextRow);</span><br><span class="line"> </span><br><span class="line">         <span class="keyword">if</span> (nCount0 == <span class="number">0</span> )</span><br><span class="line">         &#123;</span><br><span class="line">             <span class="built_in">printf</span>( <span class="string">&quot;Good job!&quot;</span> );</span><br><span class="line">             <span class="keyword">return</span> <span class="number">0</span> ;</span><br><span class="line">         &#125;</span><br><span class="line">     &#125;</span><br><span class="line">LABEL_F:</span><br><span class="line">     <span class="built_in">printf</span>( <span class="string">&quot;Try again...&quot;</span> );</span><br><span class="line">     <span class="keyword">return</span> <span class="number">0</span> ;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="逻辑分析"><a href="#逻辑分析" class="headerlink" title="逻辑分析"></a>逻辑分析</h2><ol>
+<li><p>程序读取用户输入存入数组input</p>
+</li>
+<li><p>从下标0取input里的值</p>
+</li>
+<li><p>找出从input中取出的值在数组Hexmap中对应的下标</p>
+</li>
+<li><p>用input、Hexmap的下标计算出两个数字step1和step2，按顺序传入switch case语句中进行操作</p>
+<blockquote>
+<p>在switch case语句中(0-6)每个数字都对应一个对nX、nY的操作方式；在本题中nX、nY分别为Map的列索引和行索引</p>
+</blockquote>
+</li>
+<li><p>每次switch case之后，都会判断Map[nY][nX]是否等于1，若等于1程序直接结束（失败），若不等于1则继续运行并且将Map[nY][nX]的值设置为1</p>
+</li>
+<li><p>input的下标++,循环第三步到第六步，直到取完input中用户输入的所有元素（读取到0）</p>
+</li>
+<li><p>判断Map中除Map[0][0]外（Map[0][0]等于‘S’）其他数据是否全为1，若全为1则程序输出”Good job!”（通过）</p>
+</li>
+</ol>
+<h1 id="解题"><a href="#解题" class="headerlink" title="解题"></a>解题</h1><p>本题本质上是一个走迷宫题目，要在二维数组组成的平面上一次性走过所有0（走过的0都会变成1）</p>
+<p>根据switch case语句中的内容可以整理出奇数行和偶数行（行号从1开始）不同数字对应的操作</p>
+<p><img src="D:\Desktop\CTF\TK\JJT\RE\南冥神功\pzcrackme\dir.jpg"></p>
+<p>将迷宫画下来走通，记录下来每步走的方向，查表转换成相应的数字</p>
+<p><img src="D:\Desktop\CTF\TK\JJT\RE\南冥神功\pzcrackme\mystery.jpg"></p>
+<blockquote>
+<p>一开始没有注意到除了1-5之外的数字只能是0，所以switch case中的default用了？来代替</p>
+</blockquote>
+<p>得出一串数字：1,2,3,4,3,2,1,2,3,4,3,2,1,1,0,1,2,1,0,0,5,0,5,4,3,4,5,0,5,0,1,2,1,0,1,2,1,2,3,4,3,2,2,3,2,1</p>
+<p>接下来要将数字还原成输入的字符</p>
+<h2 id="编写脚本"><a href="#编写脚本" class="headerlink" title="编写脚本"></a>编写脚本</h2><p>源代码中将输入的字符转换成数字的语句：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">step2 = (inindex + hexindex / <span class="number">6</span>) % <span class="number">6</span>;</span><br><span class="line">v8 = hexindex + inindex;</span><br><span class="line">nX = v22;</span><br><span class="line">s1tos2 = step2;</span><br><span class="line">step1 = <span class="number">5</span> - v8 % <span class="number">6</span>;</span><br></pre></td></tr></table></figure>
+
+<p>一个字符对应一个inindex，一个inindex对应一个hexindex，一对inindex和hexindex对应两个数字，所以一个字符转换成了两个数字。反过来两个数字对应同一个字符。</p>
+<p>直接暴力破解</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">char</span> Hexmap[] = <span class="string">&quot;012345&quot;</span></span><br><span class="line">                  <span class="string">&quot;6789AB&quot;</span></span><br><span class="line">                  <span class="string">&quot;CDEFGH&quot;</span></span><br><span class="line">                  <span class="string">&quot;IJKLMN&quot;</span></span><br><span class="line">                  <span class="string">&quot;OPQRST&quot;</span></span><br><span class="line">                  <span class="string">&quot;UVWXYZ&quot;</span> ;</span><br><span class="line">  <span class="keyword">int</span> inputidnex=<span class="number">0</span>;</span><br><span class="line">  <span class="keyword">int</span> step[<span class="number">46</span>]=&#123;<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">3</span>,<span class="number">2</span>,<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">3</span>,<span class="number">2</span>,<span class="number">1</span>,<span class="number">1</span>,<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>,<span class="number">1</span>,<span class="number">0</span>,<span class="number">0</span>,<span class="number">5</span>,<span class="number">0</span>,<span class="number">5</span>,<span class="number">4</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>,<span class="number">0</span>,<span class="number">5</span>,<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>,<span class="number">1</span>,<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>,<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">3</span>,<span class="number">2</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">2</span>,<span class="number">1</span>&#125;;</span><br><span class="line">  <span class="keyword">int</span> index=<span class="number">0</span>;</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">45</span>; i=i+<span class="number">2</span>)</span><br><span class="line">  &#123;</span><br><span class="line">    index=<span class="number">0</span>;</span><br><span class="line">    <span class="keyword">while</span>((<span class="number">5</span>-(inputidnex+index)%<span class="number">6</span>!=step[i])||((inputidnex+index/<span class="number">6</span>)%<span class="number">6</span>!=step[i+<span class="number">1</span>]))&#123; <span class="comment">//若满足源代码中的转换的条件则输出下标对应的字符</span></span><br><span class="line">      index++;</span><br><span class="line">    &#125; </span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%c&quot;</span>,Hexmap[index]);</span><br><span class="line">    inputidnex++;</span><br><span class="line">  &#125;</span><br><span class="line"> <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>跑出结果<img src="D:\Desktop\CTF\TK\JJT\RE\南冥神功\pzcrackme\res1.png"></p>
+<p>结果正确<img src="D:\Desktop\CTF\TK\JJT\RE\南冥神功\pzcrackme\res2.png"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/reverse/" rel="tag"># reverse</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/06/21/%E9%93%BE%E8%A1%A8/" rel="prev" title="链表">
+      <i class="fa fa-chevron-left"></i> 链表
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/07/08/buu-easyheap/" rel="next" title="buu-easyheap">
+      buu-easyheap <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%A8%8B%E5%BA%8F%E5%88%86%E6%9E%90"><span class="nav-number">1.</span> <span class="nav-text">程序分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%80%BB%E8%BE%91%E5%88%86%E6%9E%90"><span class="nav-number">1.1.</span> <span class="nav-text">逻辑分析</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%A7%A3%E9%A2%98"><span class="nav-number">2.</span> <span class="nav-text">解题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BC%96%E5%86%99%E8%84%9A%E6%9C%AC"><span class="nav-number">2.1.</span> <span class="nav-text">编写脚本</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">yang</p>
+  <div class="site-description" itemprop="description">it is funny</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">13</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yang</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

